@@ -130,7 +130,7 @@ fun ChatBubble(message: ChatMessage) {
                         .padding(12.dp)
                 ) {
                     MarkdownText(
-                        markdown = message.content
+                        markdown = message.content.content
                     )
                 }
             }

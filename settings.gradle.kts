@@ -8,6 +8,15 @@ pluginManagement {
             }
         }
         mavenCentral()
+        maven {
+            url = uri("https://plugins.gradle.org/m2/")
+        }
+        maven {
+            url = uri("https://jitpack.io")
+        }
+        maven {
+            url = uri("https://mvnrepository.com")
+        }
         gradlePluginPortal()
     }
 }
@@ -16,8 +25,14 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url = uri("https://mvnrepository.com")
+        }
         maven { url = uri("https://jitpack.io") }
-        maven { url = uri("https://maven.pkg.jetbrains.space/public/p/ktor/eap") }
+        maven {
+            url = uri("https://plugins.gradle.org/m2/")
+        }
+        // maven { url = uri("https://maven.pkg.jetbrains.space/public/p/ktor/eap") }
     }
 }
 
