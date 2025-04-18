@@ -9,7 +9,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
-suspend fun registerCalendar() {
+fun registerCalendar() {
     BinderMcpServer.addTool(
         name = "add_calendar",
         description = "Add a calendar event on the device, user must supply title, description, and reminder time first.",

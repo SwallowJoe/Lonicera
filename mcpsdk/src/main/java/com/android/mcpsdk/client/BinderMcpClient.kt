@@ -5,10 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import android.os.ParcelFileDescriptor
 import android.os.ParcelFileDescriptor.AutoCloseInputStream
 import android.os.ParcelFileDescriptor.AutoCloseOutputStream
-import android.util.Log
 import com.android.mcpsdk.IPipeService
 import com.android.mcpsdk.base.McpConnection
 import com.android.mcpsdk.server.PipeService.Companion.ACTION_PIPE_SERVICE

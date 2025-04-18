@@ -1,10 +1,11 @@
-package com.android.lonicera.components.chat
+package com.android.lonicera.components.chat.model
 
 import android.content.res.Resources
 import androidx.lifecycle.viewModelScope
 import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
+import com.android.lonicera.components.chat.ChatRepository
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.SystemMessage
 import com.llmsdk.deepseek.models.UserMessage

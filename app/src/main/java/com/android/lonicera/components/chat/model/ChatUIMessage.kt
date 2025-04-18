@@ -1,4 +1,4 @@
-package com.android.lonicera.components.chat
+package com.android.lonicera.components.chat.model
 
 import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.UserMessage

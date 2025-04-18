@@ -139,21 +139,5 @@ object BinderMcpServer {
         handler: suspend (CallToolRequest) -> CallToolResult
     ) {
         mTools.add(ToolInfo(name, description, properties, required, handler))
-/*
-        val servers = synchronized(mMcpServers) {
-            mMcpServers.toList()
-        }
-        servers.forEach { server ->
-            server.addTool(
-                name = name,
-                description = description,
-                inputSchema = Tool.Input(
-                    properties = properties,
-                    required = required
-                ),
-                handler = handler
-            )
-            server.sendToolListChanged()
-        }*/
     }
 }

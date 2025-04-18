@@ -1,8 +1,6 @@
 package com.android.lonicera.components.chat.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,14 +32,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -49,9 +44,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.lonicera.R
-import com.android.lonicera.components.chat.ChatUIAction
-import com.android.lonicera.components.chat.ChatUIState
-import com.android.lonicera.components.chat.ChatViewModel
+import com.android.lonicera.components.chat.model.ChatUIAction
+import com.android.lonicera.components.chat.model.ChatUIState
+import com.android.lonicera.components.chat.model.ChatViewModel
 import com.android.lonicera.components.widget.MenuWithScroll
 
 @Composable
@@ -73,7 +68,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
             onValueChange = { messageText = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                 .clip(RoundedCornerShape(8.dp)),
             placeholder = { Text(stringResource(R.string.input_message)) },
             singleLine = false,

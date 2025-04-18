@@ -21,7 +21,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.rememberNavController
 import com.android.lonicera.components.chat.ui.ChatUI
+import com.android.lonicera.components.navigation.Destination
+import com.android.lonicera.components.navigation.NavigatorHost
 import com.android.lonicera.view.ui.theme.LoniceraTheme
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
@@ -30,7 +33,10 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ChatUI {}
+            NavigatorHost(
+                startDestination = Destination.Chat,
+                navHostController = rememberNavController()
+            )
         }
 
         if (!Environment.isExternalStorageManager()) {

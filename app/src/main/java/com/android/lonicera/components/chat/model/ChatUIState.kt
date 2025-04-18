@@ -1,4 +1,4 @@
-package com.android.lonicera.components.chat
+package com.android.lonicera.components.chat.model
 
 import com.android.lonicera.base.State
 

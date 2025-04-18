@@ -66,8 +66,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.hilt.navigation.fragment)
 
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.io.modelcontextprotocol.kotlin.sdk)
     implementation(libs.compose.markdown)
     implementation(libs.androidx.lifecycle.runtime.ktx)

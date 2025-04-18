@@ -40,7 +40,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import com.android.lonicera.components.chat.ChatUIMessage
+import com.android.lonicera.components.chat.model.ChatUIMessage
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -68,7 +68,6 @@ fun ChatBubble(message: ChatUIMessage) {
     }
     Row(modifier = Modifier
         .fillMaxWidth()
-        .padding(vertical = 4.dp)
         .indication(
             interactionSource = interactionSource,
             indication = rememberRipple())
@@ -108,6 +107,9 @@ fun ChatBubble(message: ChatUIMessage) {
         }
 
         Column(
+            modifier = Modifier
+                .animateContentSize()
+                .padding(vertical = 2.dp),
             horizontalAlignment =   if (message.isSender)
                                         Alignment.End
                                     else
