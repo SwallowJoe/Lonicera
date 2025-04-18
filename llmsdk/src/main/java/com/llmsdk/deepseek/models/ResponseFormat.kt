@@ -1,19 +1,23 @@
 package com.llmsdk.deepseek.models
 
-import androidx.annotation.StringDef
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ResponseFormat(
-    @ResponseFormatType val type: String
-) {
+class ResponseFormat private constructor(val type: String) {
     companion object {
-        const val TEXT = "text"
-        const val JSON = "json_object"
-
-        @Retention(AnnotationRetention.SOURCE)
-        @Target(AnnotationTarget.VALUE_PARAMETER)
-        @StringDef(TEXT, JSON)
-        annotation class ResponseFormatType
+        val TEXT: ResponseFormat = ResponseFormat("text")
+        val JSON: ResponseFormat = ResponseFormat("json_object")
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ResponseFormat) return false
+        return type == other.type
+    }
+
+    override fun hashCode(): Int {
+        return type.hashCode()
+    }
+
+    override fun toString(): String = "ResponseFormat(type='$type')"
 }

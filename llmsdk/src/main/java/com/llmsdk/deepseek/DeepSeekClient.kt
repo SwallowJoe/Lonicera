@@ -2,10 +2,12 @@ package com.llmsdk.deepseek
 
 import com.llmsdk.deepseek.errors.validateResponse
 import com.llmsdk.deepseek.models.BalanceResponse
-import com.llmsdk.deepseek.models.ChatRequest
-import com.llmsdk.deepseek.models.ChatResponse
-import com.llmsdk.deepseek.models.Message
+import com.llmsdk.deepseek.models.ChatCompletionRequest
+import com.llmsdk.deepseek.models.ChatCompletionResponse
+import com.llmsdk.deepseek.models.ChatMessage
+import com.llmsdk.deepseek.models.ChatMessageModule
 import com.llmsdk.deepseek.models.ModelListResponse
+import com.llmsdk.tools.ToolManager
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -43,23 +45,16 @@ class DeepSeekClient(private val apiKey: String) {
                 isLenient = true
                 allowStructuredMapKeys = true
                 allowSpecialFloatingPointValues = true
+                serializersModule = ChatMessageModule
             })
         }
     }
 
-    private val config = DeepSeekConfig(DeepSeekRepository.MODEL_V3)
-
-    suspend fun chatCompletion(
-        messages: List<Message>,
-    ): ChatResponse {
-        return chatCompletion(model = config.model, messages = messages)
-    }
-
     // 基础请求方法
     suspend fun chatCompletion(
-        model: String = config.model,
-        messages: List<Message>,
-    ): ChatResponse {
+        config: DeepSeekConfig,
+        messages: List<ChatMessage>,
+    ): ChatCompletionResponse {
         return executeRequest {
             url("$BASE_URL/chat/completions")
             method = HttpMethod.Post
@@ -67,8 +62,8 @@ class DeepSeekClient(private val apiKey: String) {
             header(HttpHeaders.Accept, ContentType.Application.Json)
             header(HttpHeaders.ContentType, ContentType.Application.Json)
             setBody(
-                ChatRequest(
-                    model = model,
+                ChatCompletionRequest(
+                    model = config.model,
                     messages = messages,
                     temperature = config.temperature,
                     max_tokens = config.max_tokens,
@@ -81,14 +76,14 @@ class DeepSeekClient(private val apiKey: String) {
                     response_format = config.response_format,
                     top_logprobs = config.top_logprobs,
                     logprobs = config.logprobs,
-                    tools = config.tools,
+                    tools = ToolManager.availableTools(), // TODO:
                     tool_choice = config.tool_choice,
                 )
             )
         }
     }
 
-    suspend fun listModels(): ModelListResponse {
+    suspend fun getSupportedModels(): ModelListResponse {
         return executeRequest {
             url("$BASE_URL/models")
             header(HttpHeaders.Authorization, "Bearer $apiKey")

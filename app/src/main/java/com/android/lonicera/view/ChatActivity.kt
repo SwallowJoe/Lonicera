@@ -1,6 +1,9 @@
 package com.android.lonicera.view
 
+import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -18,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.lonicera.components.chat.ChatUI
+import com.android.lonicera.components.chat.ui.ChatUI
 import com.android.lonicera.view.ui.theme.LoniceraTheme
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
@@ -28,6 +31,10 @@ class ChatActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContent {
             ChatUI {}
+        }
+
+        if (!Environment.isExternalStorageManager()) {
+            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
         }
     }
 }

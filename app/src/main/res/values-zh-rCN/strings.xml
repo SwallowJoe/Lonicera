@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lonicera</string>
+    <string name="title_activity_chat">ChatActivity</string>
+    <string name="copy">复制</string>
+    <string name="paste">粘贴</string>
+    <string name="delete">删除</string>
+
+    <string name="more">更多</string>
+    <string name="settings">设置</string>
+    <string name="new_chat">新对话</string>
+    <string name="chat_history">历史对话</string>
+    <string name="input_message">输入消息…</string>
+    <string name="send">发送</string>
+    <string name="reasonable">推理</string>
+    <string name="chat_timeout">服务器超时…</string>
+</resources>

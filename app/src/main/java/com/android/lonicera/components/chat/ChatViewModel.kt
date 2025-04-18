@@ -1,16 +1,18 @@
 package com.android.lonicera.components.chat
 
+import android.content.res.Resources
+import androidx.lifecycle.viewModelScope
+import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
-import com.llmsdk.deepseek.models.Message
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.TimeoutCancellationException
+import com.llmsdk.deepseek.models.AssistantMessage
+import com.llmsdk.deepseek.models.SystemMessage
+import com.llmsdk.deepseek.models.UserMessage
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 
 class ChatViewModel(
+    private val resources: Resources,
     private val chatRepository: ChatRepository,
     private val dispatcherProvider: CoroutineDispatcherProvider
 ): BaseViewModel<ChatUIAction, ChatUIState, ChatUIEvent>() {
@@ -22,106 +24,135 @@ class ChatViewModel(
     override fun onAction(action: ChatUIAction, currentState: ChatUIState?) {
         when (action) {
             is ChatUIAction.LoadChat -> {
-                emitState {
-                    ChatUIState.Chat(
-                        title = "New Chat",
-                        messages = emptyList(),
-                        isWaitingResponse = false,
-                    )
+                viewModelScope.launch {
+                    loadChat(currentState, action.chatId)
                 }
             }
             is ChatUIAction.SendMessage -> {
-                emitState {
-                    sendMessage(currentState as? ChatUIState.Chat, action.message)
+                viewModelScope.launch {
+                    sendMessage(currentState, action.content)
                 }
             }
-            is ChatUIAction.OnResponse -> {
-                emitState {
-                    onResponse(currentState as? ChatUIState.Chat, action.message)
-                }
-            }
-            is ChatUIAction.SendMessageTimeout -> {
-                emitState {
-                    sendMessageTimeout(currentState as? ChatUIState.Chat, action.message)
-                }
-            }
-            is ChatUIAction.SetTitle -> {
 
+            is ChatUIAction.SetTitle -> {
+                emitState {
+                    setTitle(currentState, action.title)
+                }
             }
+
+            is ChatUIAction.ChangeModel -> {
+                emitState {
+                    changeModel(currentState, action.model)
+                }
+            }
+
+            is ChatUIAction.SwitchNetworkState -> {
+                emitState {
+                    currentState?.copy(
+                        enableNetwork = !currentState.enableNetwork
+                    )
+                }
+            }
+            is ChatUIAction.SwitchReasonableState -> {
+                emitState {
+                    currentState?.copy(
+                        enableReasonable = !currentState.enableReasonable,
+                    )
+                }
+                viewModelScope.launch {
+                    chatRepository.functionCallTest()
+                }
+            }
+            is ChatUIAction.SwitchStreamingState -> {
+                emitState {
+                    currentState?.copy(
+                        enableStreaming = !currentState.enableStreaming
+                    )
+                }
+            }
+            is ChatUIAction.SetFrequencyPenalty -> TODO()
+            is ChatUIAction.SetMaxTokens -> TODO()
+            is ChatUIAction.SetPresencePenalty -> TODO()
+            is ChatUIAction.SetStops -> TODO()
+            is ChatUIAction.SetTemperature -> TODO()
+            is ChatUIAction.SetTopP -> TODO()
         }
     }
 
-    private suspend fun sendMessage(state: ChatUIState.Chat?, message: String): ChatUIState? {
-        if (state == null) return null
-        if (message.isEmpty()) return state
-        val newState = state.messages.toMutableList().let {
+    private fun setTitle(state: ChatUIState?, title: String): ChatUIState? {
+        return state?.copy(
+            title = title
+        )
+    }
+
+    private fun changeModel(state: ChatUIState?, model: String): ChatUIState? {
+        chatRepository.selectModel(model)
+        return state?.copy(
+            model = model
+        )
+    }
+
+    private suspend fun loadChat(state: ChatUIState?, chatId: String?) {
+        if (chatId == null || state == null) {
+            emitState {
+                ChatUIState(
+                    model = chatRepository.getModelName(),
+                    title = resources.getString(R.string.new_chat),
+                    messages = emptyList(),
+                    isWaitingResponse = false,
+                    isLoading = false,
+                    supportedModels = chatRepository.getSupportedModels()
+                )
+            }
+        } else {
+            // TODO: 持久化存储中读取Chat记录
+        }
+    }
+
+    private suspend fun sendMessage(state: ChatUIState?, content: String) {
+        if (state == null) return
+        if (content.isEmpty()) return
+        val message = UserMessage(content = content)
+        emitState {
             state.copy(
                 isWaitingResponse = true,
-                messages = it.apply {
-                    add(
-                        ChatMessage(
-                            id = it.size,
-                            content = chatRepository.sendMessage(message),
-                            timestamp = System.currentTimeMillis(),
-                            avatar = 1
+                messages = state.messages.plus(
+                    ChatUIMessage(
+                        id = state.messages.size,
+                        content = message,
+                        timestamp = System.currentTimeMillis(),
+                        avatar = 1
+                    )
+                )
+            )
+        }
+
+        viewModelScope.launch(dispatcherProvider.io()) {
+            val response = withTimeoutOrNull(TIMEOUT) {
+                if (state.enableNetwork) {
+                    chatRepository.sendMessage(message)
+                } else {
+                    AssistantMessage(
+                        content = "Assistant received: $content"
+                    )
+                }
+            }
+            emitState {
+                replayState?.let {
+                    it.copy(
+                        isWaitingResponse = false,
+                        messages = it.messages.plus(
+                            ChatUIMessage(
+                                id = it.messages.size,
+                                content = response ?: SystemMessage(resources.getString(R.string.chat_timeout)),
+                                isSender = false,
+                                timestamp = System.currentTimeMillis(),
+                                avatar = 2
+                            )
                         )
                     )
                 }
-            )
-        }
-        CoroutineScope(dispatcherProvider.io()).launch {
-            val response = withTimeoutOrNull(TIMEOUT) {
-                chatRepository.waitResponse()
-            }
-            if (response != null) {
-                sendAction(ChatUIAction.OnResponse(response))
-            } else {
-                sendAction(ChatUIAction.SendMessageTimeout("Timeout..."))
-            }
-        }
-        return newState
-    }
-
-    private suspend fun onResponse(state: ChatUIState.Chat?, message: Message): ChatUIState? {
-        if (state == null) return null
-        return withContext(dispatcherProvider.io()) {
-            state.messages.toMutableList().let {
-                state.copy(
-                    isWaitingResponse = false,
-                    messages = it.apply {
-                        add(
-                            ChatMessage(
-                                id = it.size,
-                                content = message,
-                                timestamp = System.currentTimeMillis(),
-                                avatar = 2
-                            )
-                        )
-                    }
-                )
             }
         }
     }
-
-    private suspend fun sendMessageTimeout(state: ChatUIState.Chat?, message: String): ChatUIState? {
-        if (state == null) return null
-        return withContext(dispatcherProvider.io()) {
-            state.messages.toMutableList().let {
-                state.copy(
-                    isWaitingResponse = false,
-                    messages = it.apply {
-                        add(
-                            ChatMessage(
-                                id = it.size,
-                                content = Message(message, Message.ROLE_SYSTEM),
-                                timeout = true,
-                                timestamp = System.currentTimeMillis(),
-                                avatar = 2
-                            )
-                        )
-                    }
-                )
-            }
-        }
-     }
 }

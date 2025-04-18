@@ -38,6 +38,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Lonicera"
 include(":app")
-include(":mcpserver")
-include(":mcpclient")
 include(":llmsdk")
+include(":mcpserverapp")
+include(":mcpsdk")

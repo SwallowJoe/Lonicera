@@ -43,12 +43,14 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.serialization.json)
     implementation(libs.ktor.client.logging)
+    implementation(libs.io.modelcontextprotocol.kotlin.sdk)
     // testImplementation(libs.testng)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    // testImplementation(libs.junit)
+    implementation(project(":mcpsdk"))
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

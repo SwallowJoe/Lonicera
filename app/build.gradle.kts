@@ -85,8 +85,6 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(libs.ktor.client.logging)
     implementation(project(":llmsdk"))
-    implementation(project(":mcpclient"))
-    implementation(project(":mcpserver"))
 
     // testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
