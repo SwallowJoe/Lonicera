@@ -26,7 +26,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 
-class DeepSeekClient(private val apiKey: String) {
+class DeepSeekClient {
     companion object {
         const val BASE_URL = "https://api.deepseek.com/v1"
     }
@@ -58,7 +58,7 @@ class DeepSeekClient(private val apiKey: String) {
         return executeRequest {
             url("$BASE_URL/chat/completions")
             method = HttpMethod.Post
-            header(HttpHeaders.Authorization, "Bearer $apiKey")
+            header(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
             header(HttpHeaders.Accept, ContentType.Application.Json)
             header(HttpHeaders.ContentType, ContentType.Application.Json)
             setBody(
@@ -83,19 +83,19 @@ class DeepSeekClient(private val apiKey: String) {
         }
     }
 
-    suspend fun getSupportedModels(): ModelListResponse {
+    suspend fun getSupportedModels(config: DeepSeekConfig): ModelListResponse {
         return executeRequest {
             url("$BASE_URL/models")
-            header(HttpHeaders.Authorization, "Bearer $apiKey")
+            header(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
             header(HttpHeaders.Accept, ContentType.Application.Json)
             method = HttpMethod.Get
         }
     }
 
-    suspend fun getBalance(): BalanceResponse {
+    suspend fun getBalance(config: DeepSeekConfig): BalanceResponse {
         return executeRequest {
             url("$BASE_URL/user/balance")
-            header(HttpHeaders.Authorization, "Bearer $apiKey")
+            header(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
             header(HttpHeaders.Accept, ContentType.Application.Json)
             method = HttpMethod.Get
         }

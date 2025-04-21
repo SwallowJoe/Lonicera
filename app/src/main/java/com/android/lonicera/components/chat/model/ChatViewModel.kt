@@ -9,6 +9,7 @@ import com.android.lonicera.components.chat.ChatRepository
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.SystemMessage
 import com.llmsdk.deepseek.models.UserMessage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -38,6 +39,14 @@ class ChatViewModel(
             is ChatUIAction.SetTitle -> {
                 emitState {
                     setTitle(currentState, action.title)
+                }
+            }
+
+            is ChatUIAction.SetSystemPrompt -> {
+                emitState {
+                    currentState?.copy(
+                        systemPrompt = action.systemPrompt
+                    )
                 }
             }
 
@@ -72,11 +81,48 @@ class ChatViewModel(
                 }
             }
             is ChatUIAction.SetFrequencyPenalty -> TODO()
-            is ChatUIAction.SetMaxTokens -> TODO()
+            is ChatUIAction.SetMaxTokens -> {
+                emitState {
+                    currentState?.copy(
+                        config = currentState.config.copy(
+                            max_tokens = action.maxTokens
+                        )
+                    )
+                }
+            }
             is ChatUIAction.SetPresencePenalty -> TODO()
             is ChatUIAction.SetStops -> TODO()
-            is ChatUIAction.SetTemperature -> TODO()
-            is ChatUIAction.SetTopP -> TODO()
+            is ChatUIAction.SetTemperature -> {
+                emitState {
+                    currentState?.copy(
+                        config = currentState.config.copy(
+                            temperature = action.temperature.toDouble()
+                        )
+                    )
+                }
+            }
+            is ChatUIAction.SetTopP -> {
+                emitState {
+                    currentState?.copy(
+                        config = currentState.config.copy(
+                            top_p = action.topP.toDouble()
+                        )
+                    )
+                }
+            }
+            is ChatUIAction.SetApiKey -> {
+                if (action.apiKey == currentState?.config?.apiKey) {
+                    return
+                }
+                emitState {
+                    chatRepository.setApiKey(action.context, action.apiKey)
+                    currentState?.copy(
+                        config = currentState.config.copy(
+                            apiKey = action.apiKey
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -99,6 +145,7 @@ class ChatViewModel(
                 ChatUIState(
                     model = chatRepository.getModelName(),
                     title = resources.getString(R.string.new_chat),
+                    config = chatRepository.getConfig(),
                     messages = emptyList(),
                     isWaitingResponse = false,
                     isLoading = false,

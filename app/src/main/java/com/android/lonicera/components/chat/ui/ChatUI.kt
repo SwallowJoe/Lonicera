@@ -38,14 +38,13 @@ import com.android.lonicera.components.chat.ChatRepository
 import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
-import com.android.lonicera.components.navigation.Destination
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatUI(navHostController: NavHostController) {
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(stringResource(R.string.new_chat)),
+        chatRepository = ChatRepository(LocalContext.current, stringResource(R.string.new_chat)),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
     chatViewModel.sendAction(ChatUIAction.LoadChat(stringResource(R.string.new_chat)))
@@ -95,7 +94,7 @@ fun ChatUI(navHostController: NavHostController) {
             }
         ) { innerPadding ->
             if (showChatSettings) {
-                ChatSettings {
+                ChatSettings(state = state, viewModel = chatViewModel) {
                     showChatSettings = false
                 }
             }
@@ -112,7 +111,7 @@ fun ChatUI(navHostController: NavHostController) {
                     reverseLayout = true // 最新消息在底部
                 ) {
                     items(state.messages.reversed()) { message ->
-                        ChatBubble(message = message)
+                        ChatBubble(state, message = message)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }

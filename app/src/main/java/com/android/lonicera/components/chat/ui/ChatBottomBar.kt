@@ -143,6 +143,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                     // .background(MaterialTheme.colorScheme.surfaceContainerLow)
             ) {
                 MenuWithScroll(
+                    selectedOption = state.model,
                     options = state.supportedModels,
                     onOptionSelected = {
                         viewModel.sendAction(ChatUIAction.ChangeModel(it))
@@ -288,55 +289,5 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ModelSelector(viewModel: ChatViewModel,
-                  modelList: List<String>) {
-    val selectedOption = remember { mutableStateOf(modelList.first()) }
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = {
-                expanded = false
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding()
-        ) {
-            modelList.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(text = item) },
-                    onClick = {
-                        selectedOption.value = item
-                        expanded = false
-                        viewModel.sendAction(ChatUIAction.ChangeModel(item))
-                    }
-                )
-            }
-        }
-        TextField(
-            value = selectedOption.value,
-            onValueChange = { },
-            readOnly = true,
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(
-                    expanded = expanded
-                )
-            },
-            singleLine = true,
-            colors = ExposedDropdownMenuDefaults.textFieldColors(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-        )
     }
 }

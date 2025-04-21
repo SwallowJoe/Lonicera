@@ -41,12 +41,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.android.lonicera.components.chat.model.ChatUIMessage
+import com.android.lonicera.components.chat.model.ChatUIState
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
-fun ChatBubble(message: ChatUIMessage) {
+fun ChatBubble(state: ChatUIState, message: ChatUIMessage) {
     val scope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     var showMenu by remember { mutableStateOf(false) }
@@ -137,13 +138,15 @@ fun ChatBubble(message: ChatUIMessage) {
                     )
                 }
             }
-            Text(
-                // 展示时间，包含日期和时间
-                text = SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(message.timestamp)),
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(top = 4.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (state.showMessageTimestamp) {
+                Text(
+                    // 展示时间，包含日期和时间
+                    text = SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(message.timestamp)),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         if (message.isSender) {
