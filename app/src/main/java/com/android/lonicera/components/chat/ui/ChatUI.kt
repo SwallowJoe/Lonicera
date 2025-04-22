@@ -12,16 +12,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,16 +36,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.android.lonicera.R
+import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.base.DefaultCoroutineDispatcherProvider
 import com.android.lonicera.base.StateEffectScaffold
 import com.android.lonicera.components.chat.ChatRepository
 import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
+import com.android.lonicera.components.widget.AnimatedDrawerScaffold
+import com.android.lonicera.components.widget.AnimatedOverlayDrawerScaffold
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatUI(navHostController: NavHostController) {
+    val scope = rememberCoroutineScope()
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
         chatRepository = ChatRepository(LocalContext.current, stringResource(R.string.new_chat)),
@@ -54,76 +63,93 @@ fun ChatUI(navHostController: NavHostController) {
         initialState = ChatUIState(""),
         sideEffect = { viewModel, sideEffect -> }
     ) { viewModel, state ->
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(text = state.title, fontSize = 16.sp)
+        val drawerState = remember { mutableStateOf(false) }
+        AnimatedOverlayDrawerScaffold(
+            modifier = Modifier,
+            showDrawer = drawerState,
+            drawerContent = {
+                ChatDrawerContent(
+                    state = state,
+                    viewModel = chatViewModel,
+                    onDrawerCloseRequest = {
+                        drawerState.value = false
                     },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            navHostController.popBackStack()
-                        }) {
-                            Icon(
-                                painter = painterResource(R.drawable.sort_48px),
-                                contentDescription = stringResource(R.string.chat_history),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = {
-                                showChatSettings = !showChatSettings
-                                // navHostController.navigate(Destination.Settings.route)
-                            }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.settings_48px),
-                                contentDescription = stringResource(R.string.settings),
-                                modifier = Modifier.size(24.dp))
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.Black,
-                        navigationIconContentColor = Color.Black,
-                        actionIconContentColor = Color.Black
-                    )
+                    navHostController = navHostController
                 )
             }
-        ) { innerPadding ->
-            if (showChatSettings) {
-                ChatSettings(state = state, viewModel = chatViewModel) {
-                    showChatSettings = false
+        ) {
+            Scaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(text = state.title, fontSize = 16.sp)
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                drawerState.value = true
+                            }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.sort_48px),
+                                    contentDescription = stringResource(R.string.chat_history),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = {
+                                    showChatSettings = !showChatSettings
+                                    // navHostController.navigate(Destination.Settings.route)
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.settings_48px),
+                                    contentDescription = stringResource(R.string.settings),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = Color.Transparent,
+                            titleContentColor = Color.Black,
+                            navigationIconContentColor = Color.Black,
+                            actionIconContentColor = Color.Black
+                        )
+                    )
                 }
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // 消息列表
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    reverseLayout = true // 最新消息在底部
-                ) {
-                    items(state.messages.reversed()) { message ->
-                        ChatBubble(state, message = message)
-                        Spacer(modifier = Modifier.height(8.dp))
+            ) { innerPadding ->
+                if (showChatSettings) {
+                    ChatSettings(state = state, viewModel = chatViewModel) {
+                        showChatSettings = false
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Box(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .imePadding()
+                        .fillMaxSize()
+                        .padding(innerPadding)
                 ) {
-                    ChatBottomBar(state, viewModel)
+                    // 消息列表
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        reverseLayout = true // 最新消息在底部
+                    ) {
+                        items(state.messages.reversed()) { message ->
+                            ChatBubble(state, message = message)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .imePadding()
+                    ) {
+                        ChatBottomBar(state, viewModel)
+                    }
                 }
             }
         }
