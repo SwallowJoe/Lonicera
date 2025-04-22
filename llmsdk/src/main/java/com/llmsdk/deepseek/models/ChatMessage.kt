@@ -11,7 +11,7 @@ import kotlinx.serialization.modules.polymorphic
 
 @Serializable
 @JsonClassDiscriminator("role")
-sealed interface ChatMessage {
+sealed interface ChatMessage: java.io.Serializable {
     val content: String
 }
 

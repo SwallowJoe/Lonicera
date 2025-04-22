@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -85,6 +86,10 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(libs.ktor.client.logging)
     implementation(project(":llmsdk"))
+
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
 
     // testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

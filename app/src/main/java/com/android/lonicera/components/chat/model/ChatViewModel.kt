@@ -6,10 +6,9 @@ import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.components.chat.ChatRepository
+import com.android.lonicera.db.DatabaseManager
 import com.llmsdk.deepseek.models.AssistantMessage
-import com.llmsdk.deepseek.models.SystemMessage
 import com.llmsdk.deepseek.models.UserMessage
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -140,20 +139,40 @@ class ChatViewModel(
     }
 
     private suspend fun loadChat(state: ChatUIState?, chatId: String?) {
-        if (chatId == null || state == null) {
-            emitState {
-                ChatUIState(
-                    model = chatRepository.getModelName(),
-                    title = resources.getString(R.string.new_chat),
-                    config = chatRepository.getConfig(),
-                    messages = emptyList(),
-                    isWaitingResponse = false,
-                    isLoading = false,
-                    supportedModels = chatRepository.getSupportedModels()
-                )
+        emitState {
+            val messageEntity = if (chatId == null) {
+                DatabaseManager.queryAllChatMessage().maxByOrNull { it.timestamp }
+            } else {
+                DatabaseManager.queryChatMessage(chatId)
             }
-        } else {
-            // TODO: 持久化存储中读取Chat记录
+            state?.copy(
+                supportedModels = chatRepository.getSupportedModels(),
+                messages = messageEntity?.messages?.map {
+                    ChatUIMessage(
+                        content = it,
+                        timestamp = System.currentTimeMillis(),
+                        avatar = 1
+                    )
+                } ?: emptyList(),
+                title = messageEntity?.title ?: resources.getString(R.string.new_chat),
+                config = chatRepository.getConfig(),
+                isWaitingResponse = false,
+                isLoading = false,
+            ) ?: ChatUIState(
+                model = chatRepository.getModelName(),
+                title = messageEntity?.title ?: resources.getString(R.string.new_chat),
+                config = chatRepository.getConfig(),
+                messages = messageEntity?.messages?.map {
+                    ChatUIMessage(
+                        content = it,
+                        timestamp = System.currentTimeMillis(),
+                        avatar = 1
+                    )
+                } ?: emptyList(),
+                isWaitingResponse = false,
+                isLoading = false,
+                supportedModels = chatRepository.getSupportedModels()
+            )
         }
     }
 
@@ -166,7 +185,6 @@ class ChatViewModel(
                 isWaitingResponse = true,
                 messages = state.messages.plus(
                     ChatUIMessage(
-                        id = state.messages.size,
                         content = message,
                         timestamp = System.currentTimeMillis(),
                         avatar = 1
@@ -175,31 +193,83 @@ class ChatViewModel(
             )
         }
 
+        val messages = state.messages.map { it.content }.toMutableList().apply {
+            add(message)
+        }
         viewModelScope.launch(dispatcherProvider.io()) {
-            val response = withTimeoutOrNull(TIMEOUT) {
-                if (state.enableNetwork) {
-                    chatRepository.sendMessage(message)
-                } else {
-                    AssistantMessage(
-                        content = "Assistant received: $content"
-                    )
-                }
-            }
-            emitState {
-                replayState?.let {
-                    it.copy(
-                        isWaitingResponse = false,
-                        messages = it.messages.plus(
-                            ChatUIMessage(
-                                id = it.messages.size,
-                                content = response ?: SystemMessage(resources.getString(R.string.chat_timeout)),
-                                isSender = false,
-                                timestamp = System.currentTimeMillis(),
-                                avatar = 2
+            if (!state.enableNetwork) {
+                val response = AssistantMessage(content = "Assistant received: $content")
+                messages.add(response)
+                DatabaseManager.insertChatMessage(
+                    id = "test",
+                    title = state.title,
+                    messages = messages
+                )
+                emitState {
+                    replayState?.let {
+                        it.copy(
+                            isWaitingResponse = false,
+                            messages = it.messages.plus(
+                                ChatUIMessage(
+                                    content = response,
+                                    isSender = false,
+                                    timestamp = System.currentTimeMillis(),
+                                    avatar = 2
+                                )
                             )
                         )
-                    )
+                    }
                 }
+                return@launch
+            }
+            withTimeoutOrNull(TIMEOUT) {
+                chatRepository.sendMessage(
+                    message = message,
+                    onReply = { chatCompletionResponse ->
+                        viewModelScope.launch {
+                            val assistantMessage = chatCompletionResponse.choices.first().message
+                            emitState {
+                                replayState?.let {
+                                    it.copy(
+                                        isWaitingResponse = false,
+                                        messages = it.messages.plus(
+                                            ChatUIMessage(
+                                                content = assistantMessage,
+                                                isSender = false,
+                                                timestamp = System.currentTimeMillis(),
+                                                avatar = 2,
+                                                completion_tokens = chatCompletionResponse.usage.completion_tokens,
+                                                prompt_hit_tokens = chatCompletionResponse.usage.prompt_cache_hit_tokens,
+                                                prompt_miss_tokens = chatCompletionResponse.usage.prompt_cache_miss_tokens,
+                                                reasoning_tokens = chatCompletionResponse.usage.completion_tokens_details?.reasoning_tokens?:0,
+                                                timeout = false
+                                            )
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    onError = { error ->
+                        viewModelScope.launch {
+                            emitState {
+                                replayState?.let {
+                                    it.copy(
+                                        isWaitingResponse = false,
+                                        messages = it.messages.plus(
+                                            ChatUIMessage(
+                                                content = AssistantMessage(error),
+                                                isSender = false,
+                                                timestamp = System.currentTimeMillis(),
+                                                avatar = 2
+                                           )
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
             }
         }
     }

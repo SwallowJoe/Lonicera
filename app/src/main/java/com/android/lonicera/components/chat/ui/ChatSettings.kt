@@ -89,7 +89,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "Chat Settings",
+                    text = stringResource(R.string.chat_settings),
                     fontSize = 14.sp
                 )
                 OutlinedTextField(
@@ -102,7 +102,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     readOnly = false,
                     label = {
                         Text(
-                            text = "Title",
+                            text = stringResource(R.string.title),
                             fontSize = 10.sp
                         )
                     },
@@ -119,7 +119,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     readOnly = false,
                     label = {
                         Text(
-                            text = "System Prompt",
+                            text = stringResource(R.string.system_prompt),
                             fontSize = 10.sp
                         )
                     },
@@ -133,7 +133,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     modifier = Modifier
                         .padding(top = 12.dp)
                         .fillMaxWidth(),
-                    title = "model setting"
+                    title = stringResource(R.string.model_settings)
                 ) {
                     // Text(text = "This is the content that will be displayed when expanded.")
                     if (state.model.contains("DeepSeek")) {
@@ -161,7 +161,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                                 style = MaterialTheme.typography.bodyMedium.toSpanStyle()
                                     .copy(color = MaterialTheme.colorScheme.primary)
                             ) {
-                                append("Cancel")
+                                append(stringResource(R.string.cancel))
                             }
                         },
                         onClick = {
@@ -178,7 +178,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                                 style = MaterialTheme.typography.bodyMedium.toSpanStyle()
                                     .copy(color = MaterialTheme.colorScheme.primary)
                             ) {
-                                append("Save")
+                                append(stringResource(R.string.save))
                             }
                         },
                         onClick = {
@@ -201,7 +201,7 @@ fun ChatSettingsPreview() {
         chatRepository = ChatRepository(LocalContext.current, stringResource(R.string.new_chat)),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
-    chatViewModel.sendAction(ChatUIAction.LoadChat(stringResource(R.string.new_chat)))
+    chatViewModel.sendAction(ChatUIAction.LoadChat())
     StateEffectScaffold(
         viewModel = chatViewModel,
         initialState = ChatUIState(model = "", systemPrompt = "Test prompt"),
@@ -228,7 +228,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             modifier = Modifier.height(8.dp)
         )
         Text(
-            text = "Model Provider",
+            text = stringResource(R.string.model_provider),
             fontSize = 12.sp,
             modifier = Modifier.padding(bottom = 4.dp)
         )
@@ -282,7 +282,7 @@ private fun DeepSeekSettings(state: ChatUIState,
         )
 
         Text(
-            text = "Context Limit",
+            text = stringResource(R.string.context_limit),
             fontSize = 12.sp
         )
         var tokenExponent by remember { mutableFloatStateOf(11.0f) }
@@ -308,7 +308,7 @@ private fun DeepSeekSettings(state: ChatUIState,
         }
 
         Text(
-            text = "Temperature",
+            text = stringResource(R.string.temperature),
             fontSize = 12.sp
         )
 

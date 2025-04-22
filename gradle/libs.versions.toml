@@ -17,6 +17,9 @@ constraintlayout = "2.1.4"
 modelcontextprotocolKotlinSdk = "0.4.0"
 jetbrainsKotlinJvm = "1.9.0"
 navigationCompose = "2.7.7"
+roomRuntime = "2.7.0"
+roomCompiler = "2.7.0"
+roomKtx = "2.7.0"
 slf4jNop = "2.0.9"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.8.0"
@@ -27,12 +30,16 @@ ktorClientAndroid = "3.1.2"
 serialization = "1.8.0"
 coroutines = "1.10.1"
 testng = "6.9.6"
+ksp = "2.1.0-1.0.29"
 
 [libraries]
 ai-deepseek-spring-boot-starter = { module = "io.github.pig-mesh.ai:deepseek-spring-boot-starter", version.ref = "deepseekSpringBootStarterVersion" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-hilt-navigation-fragment = { module = "androidx.hilt:hilt-navigation-fragment", version.ref = "hiltNavigationFragment" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropicJava" }
 compose-markdown = { module = "com.github.jeziellago:compose-markdown", version.ref = "composeMarkdown" }
 deepseek-kotlin = { module = "org.oremif:deepseek-kotlin", version.ref = "deepseekKotlin" }
@@ -81,3 +88,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

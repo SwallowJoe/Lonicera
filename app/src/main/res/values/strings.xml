@@ -4,6 +4,16 @@
     <string name="copy">Copy</string>
     <string name="paste">Paste</string>
     <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="title">Title</string>
+    <string name="chat_settings">Chat Settings</string>
+    <string name="system_prompt">System Prompt</string>
+    <string name="model_settings">Model Settings</string>
+    <string name="model_provider">Model Provider</string>
+    <string name="context_limit">Context Limit</string>
+    <string name="temperature">Temperature</string>
+    <string name="about">About</string>
 
     <string name="settings">Settings</string>
     <string name="more">More</string>

@@ -138,10 +138,22 @@ fun ChatBubble(state: ChatUIState, message: ChatUIMessage) {
                     )
                 }
             }
+            var hint = ""
             if (state.showMessageTimestamp) {
+                hint += SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(message.timestamp))
+            }
+            if (!message.isSender && state.showTokenCount) {
+                val totalTokens = message.prompt_hit_tokens + message.prompt_miss_tokens + message.reasoning_tokens + message.completion_tokens
+                hint += " | chat ${message.completion_tokens} tokens | prompt hit ${message.prompt_hit_tokens} tokes, prompt miss ${message.prompt_miss_tokens}"
+                if (message.reasoning_tokens > 0) {
+                    hint += " | reasoning ${message.reasoning_tokens} tokens"
+                }
+                hint += " | total $totalTokens tokens"
+            }
+            if (hint.isNotEmpty()) {
                 Text(
                     // 展示时间，包含日期和时间
-                    text = SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(message.timestamp)),
+                    text = hint,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant

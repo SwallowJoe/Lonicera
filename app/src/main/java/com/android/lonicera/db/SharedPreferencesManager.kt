@@ -1,6 +1,7 @@
 package com.android.lonicera.db
 
 import android.content.Context
+import com.android.lonicera.db.database.ChatDatabase
 
 object SharedPreferencesManager {
     fun save(context: Context, table: String, data: HashMap<String, String>) {

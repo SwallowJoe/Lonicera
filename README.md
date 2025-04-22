@@ -1,9 +1,9 @@
 # Lonicera
 
-## ParcelFileDescriptor.createSocketPair
+## 简介
 
-创建套接字对，返回一个数组，数组的第一个元素是服务器端套接字，第二个元素是客户端套接字。
+Lonicera 是一个简单的个人大模型应用，基于 DeepSeek 和 MCP，可以在 Android 上运行。
 
-注意，返回的fd 是 ParcelFileDescriptor 类型，而不是 FileDescriptor 类型。
+借助 mcpsdk 可以向 Lonicera 添加自定义工具，以实现方便快捷的 AI 助手。
 
-另外这个fd通过binder传输后，本地端会自动关闭！！！
+后续将支持更多大模型，如 ChatGPT、Bing、LLaMA 等。

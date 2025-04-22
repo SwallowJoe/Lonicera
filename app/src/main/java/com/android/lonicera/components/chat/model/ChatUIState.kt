@@ -19,6 +19,6 @@ data class ChatUIState(
     var config: DeepSeekConfig = DeepSeekConfig(),
 
     var showWordCount: Boolean = false,
-    var showTokenCount: Boolean = false,
+    var showTokenCount: Boolean = true,
     var showMessageTimestamp: Boolean = true,
 ) : State

@@ -3,11 +3,13 @@ package com.android.lonicera.components.chat
 import android.content.Context
 import android.util.Log
 import com.android.lonicera.BuildConfig
+import com.android.lonicera.db.DatabaseManager
 import com.android.lonicera.db.SharedPreferencesManager
 import com.llmsdk.deepseek.DeepSeekClient
 import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.BalanceResponse
+import com.llmsdk.deepseek.models.ChatCompletionResponse
 import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.ChatModel
 import com.llmsdk.deepseek.models.ModelInfo
@@ -86,6 +88,32 @@ class ChatRepository(context: Context, private var title: String) {
         return mChat.getBalance(mConfig)
     }
 
+    suspend fun sendMessage(message: ChatMessage,
+                            onReply: (ChatCompletionResponse) -> Unit,
+                            onError: (String) -> Unit) {
+        try {
+            mMessages.add(message)
+            val response = mChat.chatCompletion(
+                config = mConfig,
+                messages = mMessages,
+            )
+            val reply = response.choices.first().message
+            mMessages.add(reply)
+            onReply.invoke(response)
+
+            reply.tool_calls?.let {
+                if (it.isEmpty()) return@let
+                val toolCallReply = processFunctionCall(it)
+                mMessages.add(toolCallReply.choices.first().message)
+                onReply.invoke(toolCallReply)
+
+                DatabaseManager.insertChatMessage(toolCallReply.id, title, mMessages)
+            }
+        } catch (e: Exception) {
+            onError.invoke("**Sorry, I'm having trouble understanding your request. Please try again.**\n\n${e.message}}")
+        }
+    }
+
     suspend fun sendMessage(message: ChatMessage): AssistantMessage {
         try {
             mMessages.add(message)
@@ -99,8 +127,8 @@ class ChatRepository(context: Context, private var title: String) {
             reply.tool_calls?.let {
                 if (it.isEmpty()) return@let
                 val toolCallReply = processFunctionCall(it)
-                mMessages.add(toolCallReply)
-                return toolCallReply
+                mMessages.add(toolCallReply.choices.first().message)
+                return toolCallReply.choices.first().message
             }
             return reply
         } catch (e: Exception) {
@@ -120,7 +148,7 @@ class ChatRepository(context: Context, private var title: String) {
         )
     }
 
-    private suspend fun processFunctionCall(toolCalls: List<ToolCall>): AssistantMessage {
+    private suspend fun processFunctionCall(toolCalls: List<ToolCall>): ChatCompletionResponse {
         toolCalls.forEach { toolCall ->
             Log.i(TAG, "processFunctionCall: $toolCall")
             val response = ToolManager.callTool(toolCall.function.name,
@@ -136,6 +164,6 @@ class ChatRepository(context: Context, private var title: String) {
         return mChat.chatCompletion(
             config = mConfig,
             messages = mMessages,
-        ).choices.first().message
+        )
     }
 }

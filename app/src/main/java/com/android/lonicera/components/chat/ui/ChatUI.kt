@@ -47,7 +47,7 @@ fun ChatUI(navHostController: NavHostController) {
         chatRepository = ChatRepository(LocalContext.current, stringResource(R.string.new_chat)),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
-    chatViewModel.sendAction(ChatUIAction.LoadChat(stringResource(R.string.new_chat)))
+    chatViewModel.sendAction(ChatUIAction.LoadChat())
     var showChatSettings by remember { mutableStateOf(false) }
     StateEffectScaffold(
         viewModel = chatViewModel,
