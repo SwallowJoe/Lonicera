@@ -58,7 +58,11 @@ fun AnimatedOverlayDrawerScaffold(
 
     LaunchedEffect(showDrawer.value) {
         dragAmountOffset = if (showDrawer.value) {
-            maxDrawerOffset
+            if (direction == Direction.LEFT || direction == Direction.TOP) {
+                maxDrawerOffset
+            } else {
+                -maxDrawerOffset
+            }
         } else {
             0.dp
         }
@@ -68,12 +72,15 @@ fun AnimatedOverlayDrawerScaffold(
         if (direction == Direction.LEFT || direction == Direction.RIGHT) {
             detectHorizontalDragGestures(
                 onDragEnd = {
-                    dragAmountOffset = if (dragAmountOffset.toPx().absoluteValue * 2 > drawerSize.width.toPx()) {
-                        if (direction == Direction.LEFT) drawerSize.width
-                        else -drawerSize.width
-                    } else {
-                        0.dp
-                    }
+                    dragAmountOffset =
+                        if (dragAmountOffset.toPx().absoluteValue * 2 > drawerSize.width.toPx()) {
+                            showDrawer.value = true
+                            if (direction == Direction.LEFT) drawerSize.width
+                            else -drawerSize.width
+                        } else {
+                            showDrawer.value = false
+                            0.dp
+                        }
                 }
             ) { change, dragAmount ->
                 dragAmountOffset += with(density) { dragAmount.toDp() }
@@ -84,8 +91,10 @@ fun AnimatedOverlayDrawerScaffold(
 
                 } else if (direction == Direction.LEFT && dragAmountOffset < 0.dp) {
                     dragAmountOffset = 0.dp
+                    // showDrawer.value = false
                 } else if (direction == Direction.RIGHT && dragAmountOffset > 0.dp) {
                     dragAmountOffset = 0.dp
+                    // showDrawer.value = false
                 }
 
                 change.consume()
@@ -93,12 +102,15 @@ fun AnimatedOverlayDrawerScaffold(
         } else {
             detectVerticalDragGestures(
                 onDragEnd = {
-                    dragAmountOffset = if (dragAmountOffset.toPx().absoluteValue * 2 > drawerSize.height.toPx()) {
-                        if (direction == Direction.TOP) drawerSize.height
-                        else -drawerSize.height
-                    } else {
-                        0.dp
-                    }
+                    dragAmountOffset =
+                        if (dragAmountOffset.toPx().absoluteValue * 2 > drawerSize.height.toPx()) {
+                            showDrawer.value = true
+                            if (direction == Direction.TOP) drawerSize.height
+                            else -drawerSize.height
+                        } else {
+                            showDrawer.value = false
+                            0.dp
+                        }
                 }
             ) { change, dragAmount ->
                 dragAmountOffset += with(density) { dragAmount.toDp() }
@@ -108,8 +120,10 @@ fun AnimatedOverlayDrawerScaffold(
                         else -drawerSize.height
                 } else if (direction == Direction.TOP && dragAmountOffset < 0.dp) {
                     dragAmountOffset = 0.dp
+                    // showDrawer.value = false
                 } else if (direction == Direction.BOTTOM && dragAmountOffset > 0.dp) {
                     dragAmountOffset = 0.dp
+                    // showDrawer.value = false
                 }
 
                 change.consume()
@@ -175,6 +189,7 @@ fun AnimatedOverlayDrawerScaffold(
                             detectTapGestures(
                                 onTap = {
                                     dragAmountOffset = 0.dp
+                                    showDrawer.value = false
                                 }
                             )
                         }

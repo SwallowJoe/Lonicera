@@ -81,7 +81,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     maxHeight = screenHeight - 64.dp
                 )
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
         ) {
             Column(
                 modifier = Modifier
@@ -198,10 +198,10 @@ fun ChatSettingsPreview() {
 
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(LocalContext.current, stringResource(R.string.new_chat)),
+        chatRepository = ChatRepository(LocalContext.current),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
-    chatViewModel.sendAction(ChatUIAction.LoadChat())
+    chatViewModel.sendAction(ChatUIAction.LoadChat)
     StateEffectScaffold(
         viewModel = chatViewModel,
         initialState = ChatUIState(model = "", systemPrompt = "Test prompt"),

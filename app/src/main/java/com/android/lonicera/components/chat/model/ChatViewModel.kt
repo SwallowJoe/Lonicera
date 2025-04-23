@@ -26,7 +26,20 @@ class ChatViewModel(
         when (action) {
             is ChatUIAction.LoadChat -> {
                 viewModelScope.launch {
-                    loadChat(currentState, action.chatId)
+                    loadChat(currentState)
+                }
+            }
+            is ChatUIAction.NewChat -> {
+                emitState {
+                    currentState?.copy(
+                        id = System.currentTimeMillis().toString(),
+                        title = resources.getString(R.string.new_chat),
+                        messages = emptyList(),
+                        systemPrompt = "",
+                        error = null,
+                        isWaitingResponse = false,
+                        isLoading = false,
+                    )
                 }
             }
             is ChatUIAction.SendMessage -> {
@@ -122,6 +135,25 @@ class ChatViewModel(
                     )
                 }
             }
+
+            is ChatUIAction.CleanChatHistory -> {
+                // TODO:
+            }
+            is ChatUIAction.SelectChat -> {
+                emitState {
+                    currentState?.copy(
+                        id = action.messageEntity.id,
+                        title = action.messageEntity.title,
+                        messages = action.messageEntity.messages.map {
+                            ChatUIMessage(
+                                content = it,
+                                timestamp = System.currentTimeMillis(),
+                                avatar = 1
+                            )
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -138,14 +170,14 @@ class ChatViewModel(
         )
     }
 
-    private suspend fun loadChat(state: ChatUIState?, chatId: String?) {
+    private suspend fun loadChat(state: ChatUIState?) {
         emitState {
-            val messageEntity = if (chatId == null) {
-                DatabaseManager.queryAllChatMessage().maxByOrNull { it.timestamp }
-            } else {
-                DatabaseManager.queryChatMessage(chatId)
-            }
+            val messageEntities =
+                DatabaseManager.queryAllChatMessage()
+            val messageEntity = messageEntities.maxByOrNull { it.timestamp }
+
             state?.copy(
+                id = messageEntity?.id ?: System.currentTimeMillis().toString(),
                 supportedModels = chatRepository.getSupportedModels(),
                 messages = messageEntity?.messages?.map {
                     ChatUIMessage(
@@ -154,11 +186,13 @@ class ChatViewModel(
                         avatar = 1
                     )
                 } ?: emptyList(),
+                messageEntities = messageEntities,
                 title = messageEntity?.title ?: resources.getString(R.string.new_chat),
                 config = chatRepository.getConfig(),
                 isWaitingResponse = false,
                 isLoading = false,
             ) ?: ChatUIState(
+                id = messageEntity?.id ?: System.currentTimeMillis().toString(),
                 model = chatRepository.getModelName(),
                 title = messageEntity?.title ?: resources.getString(R.string.new_chat),
                 config = chatRepository.getConfig(),
@@ -169,6 +203,7 @@ class ChatViewModel(
                         avatar = 1
                     )
                 } ?: emptyList(),
+                messageEntities = messageEntities,
                 isWaitingResponse = false,
                 isLoading = false,
                 supportedModels = chatRepository.getSupportedModels()
@@ -180,6 +215,13 @@ class ChatViewModel(
         if (state == null) return
         if (content.isEmpty()) return
         val message = UserMessage(content = content)
+        if (state.title == resources.getString(R.string.new_chat)) {
+            emitState {
+                state.copy(
+                    title = content
+                )
+            }
+        }
         emitState {
             state.copy(
                 isWaitingResponse = true,
@@ -201,7 +243,7 @@ class ChatViewModel(
                 val response = AssistantMessage(content = "Assistant received: $content")
                 messages.add(response)
                 DatabaseManager.insertChatMessage(
-                    id = "test",
+                    id = state.id,
                     title = state.title,
                     messages = messages
                 )
@@ -224,6 +266,8 @@ class ChatViewModel(
             }
             withTimeoutOrNull(TIMEOUT) {
                 chatRepository.sendMessage(
+                    id = state.id,
+                    title = state.title,
                     message = message,
                     onReply = { chatCompletionResponse ->
                         viewModelScope.launch {

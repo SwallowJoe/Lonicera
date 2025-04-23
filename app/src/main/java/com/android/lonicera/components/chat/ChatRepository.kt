@@ -2,7 +2,6 @@ package com.android.lonicera.components.chat
 
 import android.content.Context
 import android.util.Log
-import com.android.lonicera.BuildConfig
 import com.android.lonicera.db.DatabaseManager
 import com.android.lonicera.db.SharedPreferencesManager
 import com.llmsdk.deepseek.DeepSeekClient
@@ -20,7 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class ChatRepository(context: Context, private var title: String) {
+class ChatRepository(context: Context) {
     companion object {
         private const val TAG = "ChatRepository"
         private const val TABLE_NAME = "chat_repository"
@@ -88,7 +87,9 @@ class ChatRepository(context: Context, private var title: String) {
         return mChat.getBalance(mConfig)
     }
 
-    suspend fun sendMessage(message: ChatMessage,
+    suspend fun sendMessage(id: String,
+                            title: String,
+                            message: ChatMessage,
                             onReply: (ChatCompletionResponse) -> Unit,
                             onError: (String) -> Unit) {
         try {
@@ -107,7 +108,9 @@ class ChatRepository(context: Context, private var title: String) {
                 mMessages.add(toolCallReply.choices.first().message)
                 onReply.invoke(toolCallReply)
 
-                DatabaseManager.insertChatMessage(toolCallReply.id, title, mMessages)
+                DatabaseManager.insertChatMessage(id, title, mMessages)
+            } ?: run {
+                DatabaseManager.insertChatMessage(id, title, mMessages)
             }
         } catch (e: Exception) {
             onError.invoke("**Sorry, I'm having trouble understanding your request. Please try again.**\n\n${e.message}}")

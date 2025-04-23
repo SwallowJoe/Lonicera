@@ -196,10 +196,10 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.38f),
-                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f),
+                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f))
                         )
                     ) {
                         Icon(
@@ -231,10 +231,10 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.38f),
-                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f),
+                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f))
                         )
                     ) {
                         Icon(
@@ -266,10 +266,10 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.38f),
-                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f),
+                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f))
                         )
                     ) {
                         Icon(

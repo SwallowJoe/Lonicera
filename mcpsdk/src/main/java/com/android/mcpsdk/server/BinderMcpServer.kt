@@ -70,7 +70,6 @@ object BinderMcpServer {
         }
 
         runBlocking(Dispatchers.IO) {
-
             server.connect(transport)
             server.onClose {
                 synchronized(mMcpServers) {

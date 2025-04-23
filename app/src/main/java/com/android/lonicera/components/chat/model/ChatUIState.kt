@@ -1,13 +1,16 @@
 package com.android.lonicera.components.chat.model
 
 import com.android.lonicera.base.State
+import com.android.lonicera.db.entity.MessageEntity
 import com.llmsdk.deepseek.DeepSeekConfig
 
 data class ChatUIState(
+    val id: String = "",
     val model: String = "",
     val title: String = "",
     val supportedModels: List<String> = emptyList(),
     val messages: List<ChatUIMessage> = emptyList(),
+    val messageEntities: List<MessageEntity> = emptyList(),
     val error: String? = null,
     var isWaitingResponse: Boolean = false,
     var isLoading: Boolean = false,

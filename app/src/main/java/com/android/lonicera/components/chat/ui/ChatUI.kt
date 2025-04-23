@@ -1,7 +1,9 @@
 package com.android.lonicera.components.chat.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +18,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,16 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.android.lonicera.R
-import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.base.DefaultCoroutineDispatcherProvider
 import com.android.lonicera.base.StateEffectScaffold
 import com.android.lonicera.components.chat.ChatRepository
 import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
-import com.android.lonicera.components.widget.AnimatedDrawerScaffold
 import com.android.lonicera.components.widget.AnimatedOverlayDrawerScaffold
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,10 +53,10 @@ fun ChatUI(navHostController: NavHostController) {
     val scope = rememberCoroutineScope()
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(LocalContext.current, stringResource(R.string.new_chat)),
+        chatRepository = ChatRepository(LocalContext.current),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
-    chatViewModel.sendAction(ChatUIAction.LoadChat())
+    chatViewModel.sendAction(ChatUIAction.LoadChat)
     var showChatSettings by remember { mutableStateOf(false) }
     StateEffectScaffold(
         viewModel = chatViewModel,
@@ -66,6 +66,7 @@ fun ChatUI(navHostController: NavHostController) {
         val drawerState = remember { mutableStateOf(false) }
         AnimatedOverlayDrawerScaffold(
             modifier = Modifier,
+            showDrawer = drawerState,
             drawerContent = {
                 ChatDrawerContent(
                     state = state,
@@ -109,13 +110,14 @@ fun ChatUI(navHostController: NavHostController) {
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.Transparent,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
                             titleContentColor = Color.Black,
                             navigationIconContentColor = Color.Black,
                             actionIconContentColor = Color.Black
                         )
                     )
-                }
+                },
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) { innerPadding ->
                 if (showChatSettings) {
                     ChatSettings(state = state, viewModel = chatViewModel) {
@@ -131,21 +133,24 @@ fun ChatUI(navHostController: NavHostController) {
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
-                        reverseLayout = true // 最新消息在底部
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface),
+                        reverseLayout = true, // 最新消息在底部
+                        contentPadding = PaddingValues(0.dp, 8.dp)
                     ) {
                         items(state.messages.reversed()) { message ->
                             ChatBubble(state, message = message)
-                            Spacer(modifier = Modifier.height(8.dp))
+                            // Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Spacer(modifier = Modifier.height(8.dp))
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .imePadding()
+                            .padding(top = 4.dp)
                     ) {
                         ChatBottomBar(state, viewModel)
                     }

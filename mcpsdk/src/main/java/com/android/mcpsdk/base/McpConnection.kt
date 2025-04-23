@@ -30,6 +30,7 @@ abstract class McpConnection(
             ?.tools
             .orEmpty()
     }
+
     suspend fun callTool(functionName: String, arguments: Map<String, Any?>): Result {
         if (!isConnected()) return Result.ERROR
         val result = mcpClient.callTool(

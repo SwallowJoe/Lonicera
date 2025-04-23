@@ -1,4 +1,4 @@
-package com.android.lonicera.components.settings
+package com.android.lonicera.components.modelprovider
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,10 +10,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 
 @Composable
-fun SettingsUI(navController: NavHostController) {
+fun ModelProviderUI(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = "SettingsUI",
+            text = "Model Provider info",
             modifier = Modifier.fillMaxSize()
                 .padding(start = 160.dp, top = 320.dp)
         )

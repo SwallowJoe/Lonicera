@@ -1,21 +1,18 @@
-package com.android.lonicera.components.settings
+package com.android.lonicera.components.about
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 
 @Composable
-fun SettingsUI(navController: NavHostController) {
+fun AboutUI(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = "SettingsUI",
+            text = "About",
             modifier = Modifier.fillMaxSize()
-                .padding(start = 160.dp, top = 320.dp)
         )
     }
 }

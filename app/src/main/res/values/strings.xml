@@ -24,4 +24,6 @@
     <string name="reasonable">Reasoning</string>
     <string name="chat_timeout">Timeout…</string>
 
+    <string name="tool_settings">Tool Settings</string>
+    <string name="model_provider_info">Model Provider Info</string>
 </resources>

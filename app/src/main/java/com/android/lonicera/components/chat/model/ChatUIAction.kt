@@ -2,9 +2,13 @@ package com.android.lonicera.components.chat.model
 
 import android.content.Context
 import com.android.lonicera.base.Action
+import com.android.lonicera.db.entity.MessageEntity
 
 sealed class ChatUIAction : Action {
-    class LoadChat(val chatId: String? = null) : ChatUIAction()
+    data object LoadChat : ChatUIAction()
+    data object NewChat : ChatUIAction()
+    data object CleanChatHistory : ChatUIAction()
+    class SelectChat(val messageEntity: MessageEntity) : ChatUIAction()
     class SetTitle(val title: String) : ChatUIAction()
     class SetSystemPrompt(val systemPrompt: String): ChatUIAction()
     class SendMessage(val content: String) : ChatUIAction()
