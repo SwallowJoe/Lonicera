@@ -1,6 +1,5 @@
 package com.android.lonicera.components.widget
 
-import android.graphics.Path
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -11,9 +10,6 @@ import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -27,12 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.compose.ui.zIndex
-import kotlin.math.abs
+import kotlin.math.absoluteValue
 
 enum class Direction {
     LEFT,
@@ -47,72 +41,91 @@ fun AnimatedOverlayDrawerScaffold(
     drawerContent: @Composable () -> Unit,
     gestureEnabled: Boolean = true,
     direction: Direction = Direction.LEFT,
-    showDrawer: MutableState<Boolean> = remember { mutableStateOf(false) },
+    showDrawer: MutableState<Boolean> = mutableStateOf(false),
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
-    var drawerSize by remember { mutableStateOf(IntSize.Zero) } // 用于存储测量的drawer大小
+    var drawerSize by remember { mutableStateOf(DpSize.Zero) } // 用于存储测量的drawer大小
+    var contentSize by remember { mutableStateOf(DpSize.Zero) }
 
-    val maxDrawerOffset = with(density) {
+    val maxDrawerOffset =
         if (direction == Direction.LEFT || direction == Direction.RIGHT)
-            drawerSize.width.toDp()
+            drawerSize.width
         else
-            drawerSize.height.toDp()
+            drawerSize.height
+
+    var dragAmountOffset by remember { mutableStateOf(0.dp) }
+
+    LaunchedEffect(showDrawer.value) {
+        dragAmountOffset = if (showDrawer.value) {
+            maxDrawerOffset
+        } else {
+            0.dp
+        }
     }
 
-    val dragAmountOffset = remember { mutableStateOf(0.dp) }
     val gestureModifier = Modifier.pointerInput(Unit) {
         if (direction == Direction.LEFT || direction == Direction.RIGHT) {
             detectHorizontalDragGestures(
                 onDragEnd = {
-                    if (dragAmountOffset.value * 2 > with(density) { drawerSize.width.toDp() }) {
-                        showDrawer.value = true
-                        dragAmountOffset.value = with(density) { drawerSize.width.toDp() }
+                    dragAmountOffset = if (dragAmountOffset.toPx().absoluteValue * 2 > drawerSize.width.toPx()) {
+                        if (direction == Direction.LEFT) drawerSize.width
+                        else -drawerSize.width
                     } else {
-                        dragAmountOffset.value = 0.dp
+                        0.dp
                     }
                 }
             ) { change, dragAmount ->
-                dragAmountOffset.value += with(density) { dragAmount.toDp() }
-                if (abs(dragAmountOffset.value.toPx()) >= drawerSize.width)
-                    showDrawer.value = true
+                dragAmountOffset += with(density) { dragAmount.toDp() }
+                if (dragAmountOffset.toPx().absoluteValue >= drawerSize.width.toPx()) {
+                    dragAmountOffset =
+                        if (direction == Direction.LEFT) drawerSize.width
+                        else -drawerSize.width
+
+                } else if (direction == Direction.LEFT && dragAmountOffset < 0.dp) {
+                    dragAmountOffset = 0.dp
+                } else if (direction == Direction.RIGHT && dragAmountOffset > 0.dp) {
+                    dragAmountOffset = 0.dp
+                }
 
                 change.consume()
             }
         } else {
             detectVerticalDragGestures(
                 onDragEnd = {
-                    if (dragAmountOffset.value * 2 > with(density) { drawerSize.height.toDp() }) {
-                        showDrawer.value = true
-                        dragAmountOffset.value = with(density) { drawerSize.height.toDp() }
+                    dragAmountOffset = if (dragAmountOffset.toPx().absoluteValue * 2 > drawerSize.height.toPx()) {
+                        if (direction == Direction.TOP) drawerSize.height
+                        else -drawerSize.height
                     } else {
-                        dragAmountOffset.value = 0.dp
+                        0.dp
                     }
                 }
             ) { change, dragAmount ->
-                if (!showDrawer.value /*&& change.position.y < gestureEdgePx && dragAmount > 30*/) {
-                    if ((dragAmount > 0 && direction == Direction.TOP)
-                        || (dragAmount < 0 && direction == Direction.BOTTOM)
-                    ) {
-                        dragAmountOffset.value += with(density) { dragAmount.toDp() }
-                        if (dragAmountOffset.value >= with(density) { drawerSize.height.toDp() })
-                            showDrawer.value = true
-                        change.consume()
-                    }
+                dragAmountOffset += with(density) { dragAmount.toDp() }
+                if (dragAmountOffset.toPx().absoluteValue >= drawerSize.height.toPx()) {
+                    dragAmountOffset =
+                        if (direction == Direction.TOP) drawerSize.height
+                        else -drawerSize.height
+                } else if (direction == Direction.TOP && dragAmountOffset < 0.dp) {
+                    dragAmountOffset = 0.dp
+                } else if (direction == Direction.BOTTOM && dragAmountOffset > 0.dp) {
+                    dragAmountOffset = 0.dp
                 }
+
+                change.consume()
             }
         }
     }
 
     val drawerOffsetState by animateDpAsState(
-        targetValue = if (showDrawer.value) maxDrawerOffset else dragAmountOffset.value,
+        targetValue = dragAmountOffset,
         label = "DrawerOffset"
     )
 
     val progress = with(LocalDensity.current) {
-        val maxPx = maxDrawerOffset.toPx()
+        val maxPx = maxDrawerOffset.toPx().absoluteValue
         if (maxPx > 0f) {
-            drawerOffsetState.toPx() / maxPx
+            drawerOffsetState.toPx().absoluteValue / maxPx
         } else {
             0f // 或 fallback 默认值
         }
@@ -126,13 +139,13 @@ fun AnimatedOverlayDrawerScaffold(
     ) {
         val offsetX = when (direction) {
             Direction.LEFT -> drawerOffsetState
-            Direction.RIGHT -> -drawerOffsetState
+            Direction.RIGHT -> drawerOffsetState
             else -> 0.dp
         }
 
         val offsetY = when (direction) {
             Direction.TOP -> drawerOffsetState
-            Direction.BOTTOM -> -drawerOffsetState
+            Direction.BOTTOM -> drawerOffsetState
             else -> 0.dp
         }
 
@@ -141,6 +154,14 @@ fun AnimatedOverlayDrawerScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .absoluteOffset(x = offsetX, y = offsetY)
+                .onGloballyPositioned { coordinates ->
+                    contentSize = with(density) {
+                        DpSize(
+                            coordinates.size.width.toDp(),
+                            coordinates.size.height.toDp()
+                        )
+                    }
+                }
         ) {
             content()
 
@@ -149,12 +170,11 @@ fun AnimatedOverlayDrawerScaffold(
                     modifier = Modifier
                         .fillMaxSize()
                         .zIndex(1f)
-                        .background(Color.Black.copy(alpha = 0.5f * progress))
+                        .background(Color.Black.copy(alpha = 0.3f * progress))
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
-                                    showDrawer.value = false
-                                    dragAmountOffset.value = 0.dp
+                                    dragAmountOffset = 0.dp
                                 }
                             )
                         }
@@ -168,20 +188,30 @@ fun AnimatedOverlayDrawerScaffold(
                 when (direction) {
                     Direction.LEFT, Direction.RIGHT -> Modifier
                         .fillMaxHeight()
-                        //.width(maxDrawerOffset)
-                        .absoluteOffset(x = if (direction == Direction.LEFT)
-                            - maxDrawerOffset + offsetX else -offsetX)
+                        .absoluteOffset(
+                            x =
+                            if (direction == Direction.LEFT) - maxDrawerOffset + offsetX
+                            else contentSize.width + offsetX
+                        )
 
                     Direction.TOP, Direction.BOTTOM -> Modifier
                         .fillMaxWidth()
-                        //.height(maxDrawerOffset)
-                        .absoluteOffset(y = if (direction == Direction.TOP)
-                            - maxDrawerOffset + offsetY else -offsetY)
+                        .absoluteOffset(
+                            y =
+                            if (direction == Direction.TOP) - maxDrawerOffset + offsetY
+                            else contentSize.height + offsetY
+                        )
                 }
             )
             .onGloballyPositioned { coordinates ->
-                drawerSize = coordinates.size
+                drawerSize = with(density) {
+                    DpSize(
+                        coordinates.size.width.toDp(),
+                        coordinates.size.height.toDp()
+                    )
+                }
             }
+
 
         Box(modifier = drawerModifier) {
             drawerContent()

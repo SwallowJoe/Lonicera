@@ -25,7 +25,7 @@ fun ChatDrawerContent(state: ChatUIState,
 ) {
     Box(
         modifier = Modifier
-            .fillMaxHeight()
+            .height(240.dp)
             .width(160.dp)
             .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {

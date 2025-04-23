@@ -66,7 +66,6 @@ fun ChatUI(navHostController: NavHostController) {
         val drawerState = remember { mutableStateOf(false) }
         AnimatedOverlayDrawerScaffold(
             modifier = Modifier,
-            showDrawer = drawerState,
             drawerContent = {
                 ChatDrawerContent(
                     state = state,
