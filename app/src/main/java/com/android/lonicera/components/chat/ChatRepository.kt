@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.android.lonicera.db.DatabaseManager
 import com.android.lonicera.db.SharedPreferencesManager
+import com.android.lonicera.db.entity.MessageEntity
 import com.llmsdk.deepseek.DeepSeekClient
 import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
@@ -91,7 +92,8 @@ class ChatRepository(context: Context) {
                             title: String,
                             message: ChatMessage,
                             onReply: (ChatCompletionResponse) -> Unit,
-                            onError: (String) -> Unit) {
+                            onError: (String) -> Unit,
+                            onDatabaseUpdate: (MessageEntity) -> Unit) {
         try {
             mMessages.add(message)
             val response = mChat.chatCompletion(
@@ -108,9 +110,9 @@ class ChatRepository(context: Context) {
                 mMessages.add(toolCallReply.choices.first().message)
                 onReply.invoke(toolCallReply)
 
-                DatabaseManager.insertChatMessage(id, title, mMessages)
+                DatabaseManager.insertChatMessage(id, title, mMessages)?.let(onDatabaseUpdate)
             } ?: run {
-                DatabaseManager.insertChatMessage(id, title, mMessages)
+                DatabaseManager.insertChatMessage(id, title, mMessages)?.let(onDatabaseUpdate)
             }
         } catch (e: Exception) {
             onError.invoke("**Sorry, I'm having trouble understanding your request. Please try again.**\n\n${e.message}}")

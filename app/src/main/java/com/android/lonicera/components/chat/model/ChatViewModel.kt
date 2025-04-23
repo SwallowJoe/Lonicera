@@ -8,7 +8,9 @@ import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.components.chat.ChatRepository
 import com.android.lonicera.db.DatabaseManager
 import com.llmsdk.deepseek.models.AssistantMessage
+import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.UserMessage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -30,8 +32,11 @@ class ChatViewModel(
                 }
             }
             is ChatUIAction.NewChat -> {
+                if (currentState == null || currentState.messages.isEmpty()) {
+                    return
+                }
                 emitState {
-                    currentState?.copy(
+                    currentState.copy(
                         id = System.currentTimeMillis().toString(),
                         title = resources.getString(R.string.new_chat),
                         messages = emptyList(),
@@ -215,16 +220,10 @@ class ChatViewModel(
         if (state == null) return
         if (content.isEmpty()) return
         val message = UserMessage(content = content)
-        if (state.title == resources.getString(R.string.new_chat)) {
-            emitState {
-                state.copy(
-                    title = content
-                )
-            }
-        }
         emitState {
-            state.copy(
+            val new = state.copy(
                 isWaitingResponse = true,
+                title = if (state.title == resources.getString(R.string.new_chat)) content else state.title,
                 messages = state.messages.plus(
                     ChatUIMessage(
                         content = message,
@@ -233,88 +232,112 @@ class ChatViewModel(
                     )
                 )
             )
+            viewModelScope.launch(dispatcherProvider.io()) {
+                replayState?.let {
+                    processChat(it, message)
+                }
+            }
+            new
         }
+    }
 
-        val messages = state.messages.map { it.content }.toMutableList().apply {
-            add(message)
+    private suspend fun fakeChat(state: ChatUIState, message: UserMessage) {
+        val response = AssistantMessage(content = "Assistant received: ${message.content}")
+        val insertedMessageEntity = DatabaseManager.insertChatMessage(
+            id = state.id,
+            title = state.title,
+            messages = state.messages.map { it.content }.toMutableList().apply {
+                add(response)
+            }
+        )
+        delay(500)
+        emitState {
+            state.copy(
+                isWaitingResponse = false,
+                messages = state.messages.plus(
+                    ChatUIMessage(
+                        content = response,
+                        isSender = false,
+                        timestamp = System.currentTimeMillis(),
+                        avatar = 2
+                    )
+                ),
+                messageEntities =
+                    if (insertedMessageEntity == null) {
+                        state.messageEntities
+                    } else {
+                        state.messageEntities.plus(insertedMessageEntity)
+                    }
+            )
         }
-        viewModelScope.launch(dispatcherProvider.io()) {
-            if (!state.enableNetwork) {
-                val response = AssistantMessage(content = "Assistant received: $content")
-                messages.add(response)
-                DatabaseManager.insertChatMessage(
-                    id = state.id,
-                    title = state.title,
-                    messages = messages
-                )
-                emitState {
-                    replayState?.let {
-                        it.copy(
-                            isWaitingResponse = false,
-                            messages = it.messages.plus(
-                                ChatUIMessage(
-                                    content = response,
-                                    isSender = false,
-                                    timestamp = System.currentTimeMillis(),
-                                    avatar = 2
+    }
+
+    private suspend fun processChat(state: ChatUIState, message: UserMessage) {
+        if (!state.enableNetwork) {
+            fakeChat(state, message)
+            return
+        }
+        withTimeoutOrNull(TIMEOUT) {
+            chatRepository.sendMessage(
+                id = state.id,
+                title = state.title,
+                message = message,
+                onReply = { chatCompletionResponse ->
+                    viewModelScope.launch {
+                        val assistantMessage = chatCompletionResponse.choices.first().message
+                        emitState {
+                            replayState?.let {
+                                it.copy(
+                                    isWaitingResponse = false,
+                                    messages = it.messages.plus(
+                                        ChatUIMessage(
+                                            content = assistantMessage,
+                                            isSender = false,
+                                            timestamp = System.currentTimeMillis(),
+                                            avatar = 2,
+                                            completion_tokens = chatCompletionResponse.usage.completion_tokens,
+                                            prompt_hit_tokens = chatCompletionResponse.usage.prompt_cache_hit_tokens,
+                                            prompt_miss_tokens = chatCompletionResponse.usage.prompt_cache_miss_tokens,
+                                            reasoning_tokens = chatCompletionResponse.usage.completion_tokens_details?.reasoning_tokens?:0,
+                                            timeout = false
+                                        )
+                                    )
                                 )
-                            )
-                        )
+                            }
+                        }
+                    }
+                },
+                onError = { error ->
+                    viewModelScope.launch {
+                        emitState {
+                            replayState?.let {
+                                it.copy(
+                                    isWaitingResponse = false,
+                                    messages = it.messages.plus(
+                                        ChatUIMessage(
+                                            content = AssistantMessage(error),
+                                            isSender = false,
+                                            timestamp = System.currentTimeMillis(),
+                                            avatar = 2
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                    }
+                },
+                onDatabaseUpdate = { messageEntity ->
+                    viewModelScope.launch {
+                        emitState {
+                            replayState?.let {
+                                it.copy(
+                                    messageEntities = it.messageEntities.plus(messageEntity)
+                                )
+                            }
+                        }
                     }
                 }
-                return@launch
-            }
-            withTimeoutOrNull(TIMEOUT) {
-                chatRepository.sendMessage(
-                    id = state.id,
-                    title = state.title,
-                    message = message,
-                    onReply = { chatCompletionResponse ->
-                        viewModelScope.launch {
-                            val assistantMessage = chatCompletionResponse.choices.first().message
-                            emitState {
-                                replayState?.let {
-                                    it.copy(
-                                        isWaitingResponse = false,
-                                        messages = it.messages.plus(
-                                            ChatUIMessage(
-                                                content = assistantMessage,
-                                                isSender = false,
-                                                timestamp = System.currentTimeMillis(),
-                                                avatar = 2,
-                                                completion_tokens = chatCompletionResponse.usage.completion_tokens,
-                                                prompt_hit_tokens = chatCompletionResponse.usage.prompt_cache_hit_tokens,
-                                                prompt_miss_tokens = chatCompletionResponse.usage.prompt_cache_miss_tokens,
-                                                reasoning_tokens = chatCompletionResponse.usage.completion_tokens_details?.reasoning_tokens?:0,
-                                                timeout = false
-                                            )
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    onError = { error ->
-                        viewModelScope.launch {
-                            emitState {
-                                replayState?.let {
-                                    it.copy(
-                                        isWaitingResponse = false,
-                                        messages = it.messages.plus(
-                                            ChatUIMessage(
-                                                content = AssistantMessage(error),
-                                                isSender = false,
-                                                timestamp = System.currentTimeMillis(),
-                                                avatar = 2
-                                           )
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                )
-            }
+            )
         }
     }
 }

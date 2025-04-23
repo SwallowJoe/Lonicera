@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -147,38 +149,49 @@ fun ChatDrawerContent(state: ChatUIState,
                 contentPadding = PaddingValues(bottom = 8.dp)
             ) {
                 items(state.messageEntities.sortedByDescending { it.timestamp }) { messageEntity ->
-                    Box(
-                        modifier = Modifier
-                            .then(
-                                if (messageEntity.id == state.id) {
-                                    Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
-                                } else Modifier
+                    val isSelected = state.id == messageEntity.id
+                    Card(
+                        colors = if (isSelected) {
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
-                    )
-
-                    Text(
-                        text = messageEntity.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .clickable(
-                                onClick = {
-                                    viewModel.sendAction(
-                                        ChatUIAction.SelectChat(
-                                            messageEntity
+                        } else {
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                       modifier = Modifier.padding(start = 8.dp, end = 8.dp)
+                    ) {
+                        Text(
+                            text = messageEntity.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .clickable(
+                                    onClick = {
+                                        viewModel.sendAction(
+                                            ChatUIAction.SelectChat(
+                                                messageEntity
+                                            )
                                         )
-                                    )
-                                },
-                                indication = rememberRipple(bounded = true), // 开启涟漪
-                                interactionSource = remember { MutableInteractionSource() } // 必须搭配使用
-                            )
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp),
-                        style = TextStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 16.sp
+                                        onDrawerCloseRequest()
+                                    },
+                                    indication = rememberRipple(bounded = true), // 开启涟漪
+                                    interactionSource = remember { MutableInteractionSource() } // 必须搭配使用
+                                )
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)
+                            ,
+                            fontSize = 16.sp,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
-                    )
+                    }
                 }
             }
 
@@ -200,6 +213,7 @@ fun ChatDrawerContent(state: ChatUIState,
                     .clickable(
                         onClick = {
                             viewModel.sendAction(ChatUIAction.NewChat)
+                            onDrawerCloseRequest()
                         },
                         indication = rememberRipple(bounded = true), // 开启涟漪
                         interactionSource = remember { MutableInteractionSource() } // 必须搭配使用

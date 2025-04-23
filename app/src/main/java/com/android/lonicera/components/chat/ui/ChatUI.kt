@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,7 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -129,6 +132,12 @@ fun ChatUI(navHostController: NavHostController) {
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
+                    val listState = rememberLazyListState()
+                    LaunchedEffect(state.messages.size) {
+                        if (state.messages.isNotEmpty()) {
+                            listState.animateScrollToItem(0)
+                        }
+                    }
                     // 消息列表
                     LazyColumn(
                         modifier = Modifier
@@ -136,15 +145,18 @@ fun ChatUI(navHostController: NavHostController) {
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surface),
                         reverseLayout = true, // 最新消息在底部
+                        state = listState,
                         contentPadding = PaddingValues(0.dp, 8.dp)
                     ) {
-                        items(state.messages.reversed()) { message ->
-                            ChatBubble(state, message = message)
-                            // Spacer(modifier = Modifier.height(8.dp))
+                        items(
+                            items = state.messages.reversed(),
+                            key = { message -> message.hashCode() }
+                        ) { message ->
+                            key(message.timestamp) {
+                                ChatBubble(state, message = message)
+                            }
                         }
                     }
-
-                    // Spacer(modifier = Modifier.height(8.dp))
 
                     Box(
                         modifier = Modifier

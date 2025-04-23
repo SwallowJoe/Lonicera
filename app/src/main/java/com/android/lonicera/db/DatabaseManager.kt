@@ -21,15 +21,13 @@ object DatabaseManager {
         ).build()
     }
 
-    suspend fun insertChatMessage(id: String, title: String, messages: List<ChatMessage>) {
+    suspend fun insertChatMessage(id: String, title: String, messages: List<ChatMessage>): MessageEntity? {
         val entity = MessageEntity(id, title, System.currentTimeMillis(), messages)
         chatDatabase?.messageDao()?.insert(entity) ?: run {
             Log.i(TAG, "insert failed of $id")
+            return null
         }
-
-        queryAllChatMessage().forEach {
-            Log.i(TAG, "queryAllChatMessage: $it")
-        }
+        return entity
     }
 
     suspend fun queryChatMessage(id: String): MessageEntity? {
