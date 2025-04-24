@@ -34,9 +34,9 @@ class DeepSeekClient {
     private val client = HttpClient(Android) {
         install(SSE)
         install(HttpTimeout) {
-            requestTimeoutMillis = 50000
-            connectTimeoutMillis = 50000
-            socketTimeoutMillis = 15000L
+            connectTimeoutMillis = 15_000L // 连接超时时间, 15秒
+            socketTimeoutMillis  = 120_000L // socket读写超时时间, 120秒
+            requestTimeoutMillis = 240_000L // 请求超时时间, 240秒
         }
 
         install(ContentNegotiation) {

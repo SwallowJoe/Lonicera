@@ -22,7 +22,7 @@ class ChatViewModel(
 ): BaseViewModel<ChatUIAction, ChatUIState, ChatUIEvent>() {
     companion object {
         private const val TAG = "ChatViewModel"
-        private const val TIMEOUT = 30000L
+        private const val TIMEOUT = 300_000L // 300s
     }
 
     override fun onAction(action: ChatUIAction, currentState: ChatUIState?) {
@@ -272,6 +272,7 @@ class ChatViewModel(
     private suspend fun loadChat(state: ChatUIState?) {
         emitState {
             val messageEntities = chatRepository.queryMessageEntities()
+            // delay(5000)
             val messageEntity = messageEntities.maxByOrNull { it.updateTimestamp }
             state?.copy(
                 id = messageEntity?.createdTimestamp ?: System.currentTimeMillis().toString(),
@@ -339,7 +340,7 @@ class ChatViewModel(
                 add(response)
             }
         )
-        delay(500)
+        delay(1000)
         emitState {
             state.copy(
                 isWaitingResponse = false,

@@ -169,7 +169,7 @@ class ChatRepository {
                 DatabaseManager.insertChatMessage(id, title, messages)?.let(onDatabaseUpdate)
             }
         } catch (e: Exception) {
-            onError.invoke("**Sorry, I'm having trouble understanding your request. Please try again.**\n\n${e.message}}")
+            onError.invoke("**Sorry, I'm having trouble understanding your request. Please try again.**\n\n${e}\n\n${e.stackTrace.joinToString("\n")}")
         }
     }
 

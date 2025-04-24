@@ -1,5 +1,8 @@
 package com.android.lonicera.components.chat.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -151,27 +155,45 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                 )
             }
 
-            IconButton(
-                modifier = Modifier.size(width = 48.dp, height = 32.dp),
-                enabled = !state.isWaitingResponse,
-                onClick = {
-                    if (messageText.isNotBlank()) {
-                        viewModel.sendAction(ChatUIAction.SendMessage(messageText))
-                        messageText = ""
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
+            Box(contentAlignment = Alignment.Center) {
+                IconButton(
+                    modifier = Modifier.size(width = 48.dp, height = 32.dp),
+                    enabled = !state.isWaitingResponse,
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            viewModel.sendAction(ChatUIAction.SendMessage(messageText))
+                            messageText = ""
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        }
+                    },
+                    colors = IconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.primary),
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                ) {
+                    if (!state.isWaitingResponse) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = stringResource(R.string.send)
+                        )
                     }
-                },
-                colors = IconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.primary),
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
-                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = stringResource(R.string.send)
+                }
+                this@Row.AnimatedVisibility(
+                    visible = state.isWaitingResponse,
+                    modifier = Modifier.align(Alignment.Center),
+                    // enter = fadeIn(),
+                    exit = fadeOut(),
+                    label = "waiting",
+                    content = {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
                 )
             }
         }

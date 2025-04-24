@@ -10,6 +10,7 @@
     <string name="confirm">确认</string>
 
     <string name="alert">注意</string>
+    <string name="loading">加载中…</string>
     <string name="clean_history_warning">是否清空对话历史记录?</string>
 
     <string name="title">名称</string>

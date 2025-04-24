@@ -8,6 +8,7 @@
     <string name="cancel">Cancel</string>
     <string name="confirm">Confirm</string>
     <string name="alert">ALERT</string>
+    <string name="loading">Chat Loading…</string>
     <string name="clean_history_warning">Are you sure to clear the chat history?</string>
     <string name="title">Title</string>
     <string name="chat_settings">Chat Settings</string>
