@@ -6,8 +6,12 @@
     <string name="delete">Delete</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="alert">ALERT</string>
+    <string name="clean_history_warning">Are you sure to clear the chat history?</string>
     <string name="title">Title</string>
     <string name="chat_settings">Chat Settings</string>
+    <string name="chat_display_settings">Display Settings</string>
     <string name="system_prompt">System Prompt</string>
     <string name="model_settings">Model Settings</string>
     <string name="model_provider">Model Provider</string>
@@ -26,4 +30,7 @@
 
     <string name="tool_settings">Tool Settings</string>
     <string name="model_provider_info">Model Provider Info</string>
+    <string name="show_message_timestamp">Show message\'s timestamp</string>
+    <string name="show_message_token">Show message\'s tokens</string>
+    <string name="show_message_token_consume">Show tokens consume</string>
 </resources>

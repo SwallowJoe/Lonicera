@@ -8,8 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.android.mcpsdk.server.BinderMcpServer
-import com.android.mcpsdk.server.LocalSocketMcpServer
 import com.android.mcpsdk.server.PipeService
 import com.android.mcpserverapp.tools.registerCalendar
 import kotlinx.coroutines.CoroutineScope
@@ -17,11 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private val server = LocalSocketMcpServer(
-        name = "weather",
-        version = "0.0.1",
-        address = "/data/data/com.android.mcpserverapp/mcp.sock"
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

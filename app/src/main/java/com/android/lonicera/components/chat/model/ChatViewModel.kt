@@ -2,6 +2,7 @@ package com.android.lonicera.components.chat.model
 
 import android.content.res.Resources
 import androidx.lifecycle.viewModelScope
+import com.android.lonicera.BuildConfig
 import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
@@ -27,7 +28,7 @@ class ChatViewModel(
     override fun onAction(action: ChatUIAction, currentState: ChatUIState?) {
         when (action) {
             is ChatUIAction.LoadChat -> {
-                viewModelScope.launch {
+                viewModelScope.launch(dispatcherProvider.io()) {
                     loadChat(currentState)
                 }
             }
@@ -52,7 +53,9 @@ class ChatViewModel(
                     sendMessage(currentState, action.content)
                 }
             }
-
+            is ChatUIAction.DeleteChat -> {
+                deleteChat(currentState, action.message)
+            }
             is ChatUIAction.SetTitle -> {
                 emitState {
                     setTitle(currentState, action.title)
@@ -97,7 +100,9 @@ class ChatViewModel(
                     )
                 }
             }
-            is ChatUIAction.SetFrequencyPenalty -> TODO()
+            is ChatUIAction.SetFrequencyPenalty -> {
+
+            }
             is ChatUIAction.SetMaxTokens -> {
                 emitState {
                     currentState?.copy(
@@ -107,8 +112,12 @@ class ChatViewModel(
                     )
                 }
             }
-            is ChatUIAction.SetPresencePenalty -> TODO()
-            is ChatUIAction.SetStops -> TODO()
+            is ChatUIAction.SetPresencePenalty -> {
+
+            }
+            is ChatUIAction.SetStops -> {
+
+            }
             is ChatUIAction.SetTemperature -> {
                 emitState {
                     currentState?.copy(
@@ -132,7 +141,7 @@ class ChatViewModel(
                     return
                 }
                 emitState {
-                    chatRepository.setApiKey(action.context, action.apiKey)
+                    chatRepository.setApiKey(action.model, action.apiKey)
                     currentState?.copy(
                         config = currentState.config.copy(
                             apiKey = action.apiKey
@@ -141,21 +150,82 @@ class ChatViewModel(
                 }
             }
 
+            is ChatUIAction.UseDevelopApiKey -> {
+                emitState {
+                    val developApiKey = BuildConfig.DEEP_SEEK_API_KEY
+                    chatRepository.setApiKey(
+                        chatRepository.getModelName(),
+                        developApiKey
+                    )
+                    currentState?.copy(
+                        config = currentState.config.copy(
+                            apiKey = developApiKey
+                        )
+                    )
+                }
+            }
+
             is ChatUIAction.CleanChatHistory -> {
-                // TODO:
+                viewModelScope.launch(dispatcherProvider.io()) {
+                    chatRepository.deleteAllChats()
+                    emitState {
+                        currentState?.copy(
+                            id = System.currentTimeMillis().toString(),
+                            title = resources.getString(R.string.new_chat),
+                            messages = emptyList(),
+                            messageEntities = emptyList(),
+                            systemPrompt = "",
+                            error = null,
+                            isWaitingResponse = false,
+                            isLoading = false,
+                        )
+                    }
+                }
             }
             is ChatUIAction.SelectChat -> {
+                selectChat(action.createdTimestamp)
+            }
+            is ChatUIAction.SwitchShowWordTokens -> {
                 emitState {
                     currentState?.copy(
-                        id = action.messageEntity.id,
-                        title = action.messageEntity.title,
-                        messages = action.messageEntity.messages.map {
+                        showWordCount = !currentState.showWordCount
+                    )
+                }
+            }
+            is ChatUIAction.SwitchShowTokenConsume -> {
+                emitState {
+                    currentState?.copy(
+                        showTokenCount = !currentState.showTokenCount
+                    )
+                }
+            }
+            is ChatUIAction.SwitchShowMessageTimestamp -> {
+                emitState {
+                    currentState?.copy(
+                        showMessageTimestamp = !currentState.showMessageTimestamp
+                    )
+                }
+            }
+        }
+    }
+
+    private fun selectChat(createdTimestamp: String) {
+        viewModelScope.launch(dispatcherProvider.io()) {
+            chatRepository.queryMessageEntity(createdTimestamp)?.let {
+                emitState {
+                    replayState?.copy(
+                        id = it.createdTimestamp,
+                        title = it.title,
+                        messages = it.messages.map {
                             ChatUIMessage(
                                 content = it,
-                                timestamp = System.currentTimeMillis(),
-                                avatar = 1
+                                timestamp = System.currentTimeMillis()
                             )
                         },
+                        systemPrompt = "",
+                        error = null,
+                        isWaitingResponse = false,
+                        isLoading = false,
                     )
                 }
             }
@@ -168,7 +238,31 @@ class ChatViewModel(
         )
     }
 
-    private fun changeModel(state: ChatUIState?, model: String): ChatUIState? {
+    private fun deleteChat(state: ChatUIState?, message: ChatMessage) {
+        if (state == null) return
+        viewModelScope.launch(dispatcherProvider.io()) {
+            chatRepository.deleteChatContent(
+                id = state.id,
+                title = state.title,
+                message = message,
+                onDatabaseUpdate = { messageEntity ->
+                    replayState?.let { currentState ->
+                        val newEntities = currentState.messageEntities.toMutableList()
+                        newEntities.removeIf { it.createdTimestamp == messageEntity.createdTimestamp }
+                        newEntities.add(messageEntity)
+                        emitState {
+                            currentState.copy(
+                                messages = currentState.messages.filter { it.content != message },
+                                messageEntities = newEntities
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    private suspend fun changeModel(state: ChatUIState?, model: String): ChatUIState? {
         chatRepository.selectModel(model)
         return state?.copy(
             model = model
@@ -177,35 +271,31 @@ class ChatViewModel(
 
     private suspend fun loadChat(state: ChatUIState?) {
         emitState {
-            val messageEntities =
-                DatabaseManager.queryAllChatMessage()
-            val messageEntity = messageEntities.maxByOrNull { it.timestamp }
-
+            val messageEntities = chatRepository.queryMessageEntities()
+            val messageEntity = messageEntities.maxByOrNull { it.updateTimestamp }
             state?.copy(
-                id = messageEntity?.id ?: System.currentTimeMillis().toString(),
+                id = messageEntity?.createdTimestamp ?: System.currentTimeMillis().toString(),
                 supportedModels = chatRepository.getSupportedModels(),
                 messages = messageEntity?.messages?.map {
                     ChatUIMessage(
                         content = it,
                         timestamp = System.currentTimeMillis(),
-                        avatar = 1
                     )
                 } ?: emptyList(),
                 messageEntities = messageEntities,
                 title = messageEntity?.title ?: resources.getString(R.string.new_chat),
-                config = chatRepository.getConfig(),
+                config = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
                 isWaitingResponse = false,
                 isLoading = false,
             ) ?: ChatUIState(
-                id = messageEntity?.id ?: System.currentTimeMillis().toString(),
+                id = messageEntity?.createdTimestamp ?: System.currentTimeMillis().toString(),
                 model = chatRepository.getModelName(),
                 title = messageEntity?.title ?: resources.getString(R.string.new_chat),
-                config = chatRepository.getConfig(),
+                config = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
                 messages = messageEntity?.messages?.map {
                     ChatUIMessage(
                         content = it,
                         timestamp = System.currentTimeMillis(),
-                        avatar = 1
                     )
                 } ?: emptyList(),
                 messageEntities = messageEntities,
@@ -228,7 +318,6 @@ class ChatViewModel(
                     ChatUIMessage(
                         content = message,
                         timestamp = System.currentTimeMillis(),
-                        avatar = 1
                     )
                 )
             )
@@ -244,7 +333,7 @@ class ChatViewModel(
     private suspend fun fakeChat(state: ChatUIState, message: UserMessage) {
         val response = AssistantMessage(content = "Assistant received: ${message.content}")
         val insertedMessageEntity = DatabaseManager.insertChatMessage(
-            id = state.id,
+            createdTimestamp = state.id,
             title = state.title,
             messages = state.messages.map { it.content }.toMutableList().apply {
                 add(response)
@@ -259,14 +348,16 @@ class ChatViewModel(
                         content = response,
                         isSender = false,
                         timestamp = System.currentTimeMillis(),
-                        avatar = 2
                     )
                 ),
                 messageEntities =
                     if (insertedMessageEntity == null) {
                         state.messageEntities
                     } else {
-                        state.messageEntities.plus(insertedMessageEntity)
+                        val newEntities = state.messageEntities.toMutableList()
+                        newEntities.removeIf { it.createdTimestamp == state.id }
+                        newEntities.add(insertedMessageEntity)
+                        newEntities
                     }
             )
         }
@@ -294,7 +385,6 @@ class ChatViewModel(
                                             content = assistantMessage,
                                             isSender = false,
                                             timestamp = System.currentTimeMillis(),
-                                            avatar = 2,
                                             completion_tokens = chatCompletionResponse.usage.completion_tokens,
                                             prompt_hit_tokens = chatCompletionResponse.usage.prompt_cache_hit_tokens,
                                             prompt_miss_tokens = chatCompletionResponse.usage.prompt_cache_miss_tokens,
@@ -318,7 +408,6 @@ class ChatViewModel(
                                             content = AssistantMessage(error),
                                             isSender = false,
                                             timestamp = System.currentTimeMillis(),
-                                            avatar = 2
                                         )
                                     )
                                 )
@@ -329,9 +418,12 @@ class ChatViewModel(
                 onDatabaseUpdate = { messageEntity ->
                     viewModelScope.launch {
                         emitState {
-                            replayState?.let {
-                                it.copy(
-                                    messageEntities = it.messageEntities.plus(messageEntity)
+                            replayState?.let { currentState ->
+                                val newEntities = currentState.messageEntities.toMutableList()
+                                newEntities.removeIf { it.createdTimestamp == messageEntity.createdTimestamp }
+                                newEntities.add(messageEntity)
+                                currentState.copy(
+                                    messageEntities = newEntities
                                 )
                             }
                         }

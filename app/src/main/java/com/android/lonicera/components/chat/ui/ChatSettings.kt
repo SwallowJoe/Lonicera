@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,14 +30,17 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
@@ -66,7 +70,12 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
 
     Dialog(
         onDismissRequest = {
-            viewModel.sendAction(ChatUIAction.SetApiKey(context = application, apiKey = apiKey.value))
+            viewModel.sendAction(
+                ChatUIAction.SetApiKey(
+                    model = state.model,
+                    apiKey = apiKey.value
+                )
+            )
             onDismissRequest()
         },
         properties = DialogProperties(
@@ -146,6 +155,17 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                         }
                     }
                 }
+                ExpandableContent(
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .fillMaxWidth(),
+                    title = stringResource(R.string.chat_display_settings)
+                ) {
+                    ChatDisplaySettings(
+                        state = state,
+                        viewModel = viewModel
+                    )
+                }
 
                 Row(
                     modifier = Modifier.padding(top = 8.dp),
@@ -165,7 +185,12 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                             }
                         },
                         onClick = {
-                            viewModel.sendAction(ChatUIAction.SetApiKey(context = application, apiKey = apiKey.value))
+                            /*viewModel.sendAction(
+                                ChatUIAction.SetApiKey(
+                                    model = state.model,
+                                    apiKey = apiKey.value
+                                )
+                            )*/
                             onDismissRequest()
                         }
                     )
@@ -182,7 +207,12 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                             }
                         },
                         onClick = {
-                            viewModel.sendAction(ChatUIAction.SetApiKey(context = application, apiKey = apiKey.value))
+                            viewModel.sendAction(
+                                ChatUIAction.SetApiKey(
+                                    model = state.model,
+                                    apiKey = apiKey.value
+                                )
+                            )
                             onDismissRequest()
                         }
                     )
@@ -198,7 +228,7 @@ fun ChatSettingsPreview() {
 
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(LocalContext.current),
+        chatRepository = ChatRepository(),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
     chatViewModel.sendAction(ChatUIAction.LoadChat)
@@ -354,6 +384,51 @@ private fun DeepSeekSettings(state: ChatUIState,
                 modifier = Modifier
                     .weight(2f)
                     .padding(start = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatDisplaySettings(
+    state: ChatUIState,
+    viewModel: ChatViewModel,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(
+                checked = state.showTokenCount,
+                onCheckedChange = {
+                    viewModel.sendAction(ChatUIAction.SwitchShowTokenConsume)
+                },
+                modifier = Modifier.scale(scale= 0.6f)
+            )
+            Text(
+                text = stringResource(R.string.show_message_token_consume),
+                fontSize = 14.sp
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(
+                checked = state.showMessageTimestamp,
+                onCheckedChange = {
+                    viewModel.sendAction(ChatUIAction.SwitchShowMessageTimestamp)
+                },
+                modifier = Modifier.scale(scale = 0.6f)
+            )
+            Text(
+                text = stringResource(R.string.show_message_timestamp),
+                fontSize = 14.sp
             )
         }
     }

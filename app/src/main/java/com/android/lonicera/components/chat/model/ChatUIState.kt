@@ -5,11 +5,13 @@ import com.android.lonicera.db.entity.MessageEntity
 import com.llmsdk.deepseek.DeepSeekConfig
 
 data class ChatUIState(
+    // created timestamp
     val id: String = "",
     val model: String = "",
     val title: String = "",
     val supportedModels: List<String> = emptyList(),
     val messages: List<ChatUIMessage> = emptyList(),
+    // TODO: optimize
     val messageEntities: List<MessageEntity> = emptyList(),
     val error: String? = null,
     var isWaitingResponse: Boolean = false,

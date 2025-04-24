@@ -152,7 +152,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
             }
 
             IconButton(
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(width = 48.dp, height = 32.dp),
                 enabled = !state.isWaitingResponse,
                 onClick = {
                     if (messageText.isNotBlank()) {

@@ -8,8 +8,8 @@ const val TABLE_NAME_OF_MESSAGE = "tb_message"
 
 @Entity(tableName = TABLE_NAME_OF_MESSAGE)
 data class MessageEntity(
-    @PrimaryKey val id: String,
+    @PrimaryKey val createdTimestamp: String,
     val title: String,
-    val timestamp: Long,
+    val updateTimestamp: Long,
     val messages: List<ChatMessage>
 )

@@ -53,10 +53,9 @@ import com.android.lonicera.components.widget.AnimatedOverlayDrawerScaffold
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatUI(navHostController: NavHostController) {
-    val scope = rememberCoroutineScope()
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(LocalContext.current),
+        chatRepository = ChatRepository(),
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
     chatViewModel.sendAction(ChatUIAction.LoadChat)
@@ -153,7 +152,10 @@ fun ChatUI(navHostController: NavHostController) {
                             key = { message -> message.hashCode() }
                         ) { message ->
                             key(message.timestamp) {
-                                ChatBubble(state, message = message)
+                                ChatBubble(
+                                    state = state,
+                                    viewModel = chatViewModel,
+                                    message = message)
                             }
                         }
                     }
@@ -162,7 +164,7 @@ fun ChatUI(navHostController: NavHostController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .imePadding()
-                            .padding(top = 4.dp)
+                            .padding(top = 2.dp)
                     ) {
                         ChatBottomBar(state, viewModel)
                     }

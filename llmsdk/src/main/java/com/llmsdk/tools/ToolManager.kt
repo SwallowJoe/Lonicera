@@ -26,7 +26,7 @@ object ToolManager {
     }
 
     fun initEnv(context: Context) {
-        mMcpConnection = BinderMcpClient("weather", "0.0.1", context)
+        mMcpConnection = BinderMcpClient("weather", "0.0.1", context, "com.android.mcpserverapp")
     }
 
     suspend fun callTool(function: String, arguments: Map<String, Any?>): String {

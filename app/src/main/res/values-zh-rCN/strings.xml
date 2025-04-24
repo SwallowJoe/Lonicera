@@ -7,8 +7,14 @@
     <string name="delete">删除</string>
     <string name="save">保存</string>
     <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+
+    <string name="alert">注意</string>
+    <string name="clean_history_warning">是否清空对话历史记录?</string>
+
     <string name="title">名称</string>
     <string name="chat_settings">对话设置</string>
+    <string name="chat_display_settings">显示设置</string>
     <string name="system_prompt">系统提示(角色设定)</string>
     <string name="model_settings">模型设置</string>
     <string name="model_provider">模型提供方</string>
@@ -27,4 +33,7 @@
 
     <string name="tool_settings">工具设置</string>
     <string name="model_provider_info">模型提供方信息</string>
+    <string name="show_message_timestamp">显示消息的时间戳</string>
+    <string name="show_message_token">显示消息的 token 数量</string>
+    <string name="show_message_token_consume">显示消息的 token 消耗</string>
 </resources>

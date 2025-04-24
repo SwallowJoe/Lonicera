@@ -21,6 +21,7 @@ class BinderMcpClient(
     name: String,
     version: String,
     private val context: Context,
+    private val servicePackageName: String,
 ): McpConnection(name, version) {
 
     companion object {
@@ -44,9 +45,11 @@ class BinderMcpClient(
         override fun onBindingDied(name: ComponentName?) {
         }
     }
+
     override suspend fun connect(): Boolean {
         val intent = Intent(ACTION_PIPE_SERVICE)
-        intent.component = ComponentName("com.android.mcpserverapp",
+        intent.component = ComponentName(
+            servicePackageName /*"com.android.mcpserverapp"*/,
             "com.android.mcpsdk.server.PipeService")
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
 

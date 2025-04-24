@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,24 +37,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.android.lonicera.R
+import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.android.lonicera.components.chat.model.ChatUIState
+import com.android.lonicera.components.chat.model.ChatViewModel
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
-fun ChatBubble(state: ChatUIState, message: ChatUIMessage) {
+fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMessage) {
     val scope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     var showMenu by remember { mutableStateOf(false) }
     var touchOffset by remember { mutableStateOf(Offset.Zero) } // 记录触摸点坐标
     val interactionSource = remember { MutableInteractionSource() }
     var currentPress by remember { mutableStateOf<PressInteraction.Press?>(null) }
+    val clipboardManager = LocalClipboardManager.current
 
     LaunchedEffect(showMenu) {
         if (!showMenu) {
@@ -119,9 +128,9 @@ fun ChatBubble(state: ChatUIState, message: ChatUIMessage) {
             Row {
                 if (!message.isSender) {
                     Image(
-                        imageVector = Icons.Default.Person,
+                        painter = painterResource(message.avatar),
                         contentDescription = "头像",
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.padding(end = 8.dp).size(24.dp)
                     )
                 }
                 Box(
@@ -186,14 +195,16 @@ fun ChatBubble(state: ChatUIState, message: ChatUIMessage) {
                 modifier = Modifier.animateContentSize()
             ) {
                 DropdownMenuItem(
-                    text = { Text("复制") },
+                    text = { Text(stringResource(R.string.copy)) },
                     onClick = {
+                        clipboardManager.setText(AnnotatedString(message.content.content))
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("删除") },
+                    text = { Text(stringResource(R.string.delete)) },
                     onClick = {
+                        viewModel.sendAction(ChatUIAction.DeleteChat(message.content))
                         showMenu = false
                     }
                 )
