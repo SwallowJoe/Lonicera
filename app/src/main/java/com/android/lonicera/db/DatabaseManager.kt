@@ -5,10 +5,8 @@ import android.util.Log
 import androidx.room.Room
 import com.android.lonicera.db.database.ChatDatabase
 import com.android.lonicera.db.entity.ApiKeyEntity
-import com.android.lonicera.db.entity.MessageEntity
+import com.android.lonicera.db.entity.ChatEntity
 import com.android.lonicera.db.entity.SettingsEntity
-import com.android.lonicera.db.entity.TABLE_NAME_OF_MESSAGE
-import com.llmsdk.deepseek.models.ChatMessage
 
 object DatabaseManager {
     private const val TAG = "DatabaseManager"
@@ -19,35 +17,32 @@ object DatabaseManager {
         chatDatabase = Room.databaseBuilder(
             context = context.applicationContext,
             klass = ChatDatabase::class.java,
-            name = TABLE_NAME_OF_MESSAGE
+            name = "db_lonicera"
         ).build()
     }
 
-    suspend fun insertChatMessage(createdTimestamp: String,
-                                  title: String,
-                                  messages: List<ChatMessage>): MessageEntity? {
-        val entity = MessageEntity(createdTimestamp, title, System.currentTimeMillis(), messages)
-        chatDatabase?.messageDao()?.insert(entity) ?: run {
-            Log.i(TAG, "insert failed of $createdTimestamp")
-            return null
+    suspend fun insertChatEntity(entity: ChatEntity): Boolean {
+        chatDatabase?.chatDao()?.insert(entity) ?: run {
+            Log.i(TAG, "insert failed of $entity")
+            return false
         }
-        return entity
+        return true
     }
 
-    suspend fun queryChatMessage(createdTimestamp: String): MessageEntity? {
-        return chatDatabase?.messageDao()?.query(createdTimestamp)
+    suspend fun queryChatEntity(createdTimestamp: String): ChatEntity? {
+        return chatDatabase?.chatDao()?.query(createdTimestamp)
     }
 
-    suspend fun queryAllChatMessage(): List<MessageEntity> {
-        return chatDatabase?.messageDao()?.queryAll() ?: emptyList()
+    suspend fun queryAllChatEntity(): List<ChatEntity> {
+        return chatDatabase?.chatDao()?.queryAll() ?: emptyList()
     }
 
-    suspend fun deleteChatMessage(createdTimestamp: String) {
-        chatDatabase?.messageDao()?.delete(createdTimestamp)
+    suspend fun deleteChatEntity(createdTimestamp: String) {
+        chatDatabase?.chatDao()?.delete(createdTimestamp)
     }
 
-    suspend fun deleteAllChatMessage() {
-        chatDatabase?.messageDao()?.deleteAll()
+    suspend fun deleteAllChatEntity() {
+        chatDatabase?.chatDao()?.deleteAll()
     }
 
     suspend fun insertApiKey(modelProvider: String, apiKey: String) {

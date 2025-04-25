@@ -32,6 +32,7 @@
     <string name="reasonable">推理</string>
     <string name="chat_timeout">服务器超时…</string>
 
+    <string name="stream_option">流式输出</string>
     <string name="tool_settings">工具设置</string>
     <string name="model_provider_info">模型提供方信息</string>
     <string name="show_message_timestamp">显示消息的时间戳</string>

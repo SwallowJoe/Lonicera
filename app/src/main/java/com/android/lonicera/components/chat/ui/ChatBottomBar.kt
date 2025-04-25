@@ -21,10 +21,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
@@ -147,8 +143,8 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                     // .background(MaterialTheme.colorScheme.surfaceContainerLow)
             ) {
                 MenuWithScroll(
-                    selectedOption = state.model,
-                    options = state.supportedModels,
+                    selectedOption = state.model.nickName,
+                    options = state.supportedModels.map { it.nickName },
                     onOptionSelected = {
                         viewModel.sendAction(ChatUIAction.ChangeModel(it))
                     }

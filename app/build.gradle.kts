@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlinx.serialization)
     id("org.jetbrains.kotlin.plugin.compose")
     alias(libs.plugins.ksp)
 }

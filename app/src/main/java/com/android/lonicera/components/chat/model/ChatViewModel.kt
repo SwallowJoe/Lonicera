@@ -7,11 +7,13 @@ import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.components.chat.ChatRepository
-import com.android.lonicera.db.DatabaseManager
 import com.llmsdk.deepseek.models.AssistantMessage
-import com.llmsdk.deepseek.models.ChatMessage
+import com.llmsdk.deepseek.models.ChatModel
 import com.llmsdk.deepseek.models.UserMessage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -25,6 +27,18 @@ class ChatViewModel(
         private const val TIMEOUT = 300_000L // 300s
     }
 
+    fun getInitChatUIState(): ChatUIState {
+        return ChatUIState(
+            chatEntity = chatRepository.newMessageEntity(
+                title = resources.getString(R.string.new_chat),
+                systemPrompt = ""
+            ),
+            error = null,
+            isWaitingResponse = false,
+            isLoading = true,
+        )
+    }
+
     override fun onAction(action: ChatUIAction, currentState: ChatUIState?) {
         when (action) {
             is ChatUIAction.LoadChat -> {
@@ -33,15 +47,15 @@ class ChatViewModel(
                 }
             }
             is ChatUIAction.NewChat -> {
-                if (currentState == null || currentState.messages.isEmpty()) {
+                if (currentState == null || currentState.chatEntity.messages.isEmpty()) {
                     return
                 }
                 emitState {
                     currentState.copy(
-                        id = System.currentTimeMillis().toString(),
-                        title = resources.getString(R.string.new_chat),
-                        messages = emptyList(),
-                        systemPrompt = "",
+                        chatEntity = chatRepository.newMessageEntity(
+                            title = resources.getString(R.string.new_chat),
+                            systemPrompt = ""
+                        ),
                         error = null,
                         isWaitingResponse = false,
                         isLoading = false,
@@ -49,23 +63,21 @@ class ChatViewModel(
                 }
             }
             is ChatUIAction.SendMessage -> {
-                viewModelScope.launch {
-                    sendMessage(currentState, action.content)
-                }
+                sendMessage(currentState, action.content)
             }
             is ChatUIAction.DeleteChat -> {
                 deleteChat(currentState, action.message)
             }
             is ChatUIAction.SetTitle -> {
-                emitState {
-                    setTitle(currentState, action.title)
-                }
+                setTitle(currentState, action.title)
             }
 
             is ChatUIAction.SetSystemPrompt -> {
                 emitState {
                     currentState?.copy(
-                        systemPrompt = action.systemPrompt
+                        chatEntity = currentState.chatEntity.copy(
+                            systemPrompt = action.systemPrompt
+                        ),
                     )
                 }
             }
@@ -96,7 +108,9 @@ class ChatViewModel(
             is ChatUIAction.SwitchStreamingState -> {
                 emitState {
                     currentState?.copy(
-                        enableStreaming = !currentState.enableStreaming
+                        config = currentState.config.copy(
+                            stream = !currentState.config.stream
+                        )
                     )
                 }
             }
@@ -151,35 +165,36 @@ class ChatViewModel(
             }
 
             is ChatUIAction.UseDevelopApiKey -> {
-                emitState {
-                    val developApiKey = BuildConfig.DEEP_SEEK_API_KEY
-                    chatRepository.setApiKey(
-                        chatRepository.getModelName(),
-                        developApiKey
-                    )
-                    currentState?.copy(
-                        config = currentState.config.copy(
-                            apiKey = developApiKey
+                currentState?.let {
+                    emitState {
+                        val developApiKey = BuildConfig.DEEP_SEEK_API_KEY
+                        chatRepository.setApiKey(
+                            currentState.model,
+                            developApiKey
                         )
-                    )
+                        currentState.copy(
+                            config = currentState.config.copy(
+                                apiKey = developApiKey
+                            )
+                        )
+                    }
                 }
             }
 
             is ChatUIAction.CleanChatHistory -> {
                 viewModelScope.launch(dispatcherProvider.io()) {
                     chatRepository.deleteAllChats()
-                    emitState {
-                        currentState?.copy(
-                            id = System.currentTimeMillis().toString(),
+                }
+                emitState {
+                    currentState?.copy(
+                        chatEntity = chatRepository.newMessageEntity(
                             title = resources.getString(R.string.new_chat),
-                            messages = emptyList(),
-                            messageEntities = emptyList(),
-                            systemPrompt = "",
-                            error = null,
-                            isWaitingResponse = false,
-                            isLoading = false,
-                        )
-                    }
+                            systemPrompt = ""
+                        ),
+                        error = null,
+                        isWaitingResponse = false,
+                        isLoading = false,
+                    )
                 }
             }
             is ChatUIAction.SelectChat -> {
@@ -214,15 +229,9 @@ class ChatViewModel(
             chatRepository.queryMessageEntity(createdTimestamp)?.let {
                 emitState {
                     replayState?.copy(
-                        id = it.createdTimestamp,
-                        title = it.title,
-                        messages = it.messages.map {
-                            ChatUIMessage(
-                                content = it,
-                                timestamp = System.currentTimeMillis()
-                            )
-                        },
-                        systemPrompt = "",
+                        chatEntity = it.copy(
+                            updateTimestamp = System.currentTimeMillis()
+                        ),
                         error = null,
                         isWaitingResponse = false,
                         isLoading = false,
@@ -232,38 +241,49 @@ class ChatViewModel(
         }
     }
 
-    private fun setTitle(state: ChatUIState?, title: String): ChatUIState? {
-        return state?.copy(
-            title = title
-        )
-    }
-
-    private fun deleteChat(state: ChatUIState?, message: ChatMessage) {
-        if (state == null) return
-        viewModelScope.launch(dispatcherProvider.io()) {
-            chatRepository.deleteChatContent(
-                id = state.id,
-                title = state.title,
-                message = message,
-                onDatabaseUpdate = { messageEntity ->
-                    replayState?.let { currentState ->
-                        val newEntities = currentState.messageEntities.toMutableList()
-                        newEntities.removeIf { it.createdTimestamp == messageEntity.createdTimestamp }
-                        newEntities.add(messageEntity)
-                        emitState {
-                            currentState.copy(
-                                messages = currentState.messages.filter { it.content != message },
-                                messageEntities = newEntities
-                            )
-                        }
-                    }
-                }
+    private fun setTitle(state: ChatUIState?, title: String) {
+        emitState {
+            state?.copy(
+                chatEntity = state.chatEntity.copy(
+                    title = title
+                ),
             )
         }
     }
 
-    private suspend fun changeModel(state: ChatUIState?, model: String): ChatUIState? {
-        chatRepository.selectModel(model)
+    private fun deleteChat(state: ChatUIState?, message: ChatUIMessage) {
+        if (state == null) return
+
+        val messageRemoved = state.chatEntity.messages.removeIf {
+            it == message
+        }
+        if (messageRemoved) {
+            val chatEntity = state.chatEntity.copy(
+                updateTimestamp = System.currentTimeMillis(),
+            )
+            emitState {
+                state.copy(
+                    chatEntity = chatEntity
+                )
+            }
+            viewModelScope.launch(dispatcherProvider.io()) {
+                chatRepository.insertChatEntity(chatEntity)
+            }
+        }
+    }
+
+    private suspend fun changeModel(state: ChatUIState?, nickName: String): ChatUIState? {
+        val model = when (nickName) {
+            ChatModel.DEEPSEEK_CHAT.nickName -> {
+                ChatModel.DEEPSEEK_CHAT
+            }
+            ChatModel.DEEPSEEK_REASONER.nickName -> {
+                ChatModel.DEEPSEEK_REASONER
+            }
+            else -> ChatModel.DEEPSEEK_CHAT
+        }
+        // TODO:
+        // chatRepository.selectModel(model)
         return state?.copy(
             model = model
         )
@@ -271,35 +291,27 @@ class ChatViewModel(
 
     private suspend fun loadChat(state: ChatUIState?) {
         emitState {
-            val messageEntities = chatRepository.queryMessageEntities()
+            val chatEntities = chatRepository.queryAllChatEntity()
             // delay(5000)
-            val messageEntity = messageEntities.maxByOrNull { it.updateTimestamp }
+            val chatEntity = chatEntities.maxByOrNull { it.updateTimestamp }
             state?.copy(
-                id = messageEntity?.createdTimestamp ?: System.currentTimeMillis().toString(),
+                chatEntity = chatEntity ?: chatRepository.newMessageEntity(
+                    title = resources.getString(R.string.new_chat),
+                    systemPrompt = ""
+                ),
                 supportedModels = chatRepository.getSupportedModels(),
-                messages = messageEntity?.messages?.map {
-                    ChatUIMessage(
-                        content = it,
-                        timestamp = System.currentTimeMillis(),
-                    )
-                } ?: emptyList(),
-                messageEntities = messageEntities,
-                title = messageEntity?.title ?: resources.getString(R.string.new_chat),
+                chatHistories = chatEntities.associate { it.createdTimestamp to it.title },
                 config = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
                 isWaitingResponse = false,
                 isLoading = false,
             ) ?: ChatUIState(
-                id = messageEntity?.createdTimestamp ?: System.currentTimeMillis().toString(),
-                model = chatRepository.getModelName(),
-                title = messageEntity?.title ?: resources.getString(R.string.new_chat),
+                chatEntity = chatEntity ?: chatRepository.newMessageEntity(
+                    title = resources.getString(R.string.new_chat),
+                    systemPrompt = ""
+                ),
+                model = chatRepository.getDefaultChatModel(),
                 config = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
-                messages = messageEntity?.messages?.map {
-                    ChatUIMessage(
-                        content = it,
-                        timestamp = System.currentTimeMillis(),
-                    )
-                } ?: emptyList(),
-                messageEntities = messageEntities,
+                chatHistories = chatEntities.associate { it.createdTimestamp to it.title },
                 isWaitingResponse = false,
                 isLoading = false,
                 supportedModels = chatRepository.getSupportedModels()
@@ -307,130 +319,146 @@ class ChatViewModel(
         }
     }
 
-    private suspend fun sendMessage(state: ChatUIState?, content: String) {
+    private fun sendMessage(state: ChatUIState?, content: String) {
         if (state == null) return
         if (content.isEmpty()) return
         val message = UserMessage(content = content)
+        state.chatEntity.messages.add(
+            ChatUIMessage(
+                message = message,
+                timestamp = System.currentTimeMillis(),
+            )
+        )
         emitState {
             val new = state.copy(
                 isWaitingResponse = true,
-                title = if (state.title == resources.getString(R.string.new_chat)) content else state.title,
-                messages = state.messages.plus(
-                    ChatUIMessage(
-                        content = message,
-                        timestamp = System.currentTimeMillis(),
-                    )
-                )
+                chatEntity = state.chatEntity.copy(
+                    title = state.chatEntity.title.takeIf {
+                        it != resources.getString(R.string.new_chat)
+                    } ?: content,
+                    updateTimestamp = System.currentTimeMillis(),
+                ),
             )
             viewModelScope.launch(dispatcherProvider.io()) {
                 replayState?.let {
-                    processChat(it, message)
+                    processChat(it)
                 }
             }
             new
         }
     }
 
-    private suspend fun fakeChat(state: ChatUIState, message: UserMessage) {
-        val response = AssistantMessage(content = "Assistant received: ${message.content}")
-        val insertedMessageEntity = DatabaseManager.insertChatMessage(
-            createdTimestamp = state.id,
-            title = state.title,
-            messages = state.messages.map { it.content }.toMutableList().apply {
-                add(response)
-            }
+    private suspend fun fakeChat(state: ChatUIState, content: String) {
+        val chatEntity = state.chatEntity.copy(
+            updateTimestamp = System.currentTimeMillis(),
         )
-        delay(1000)
-        emitState {
-            state.copy(
-                isWaitingResponse = false,
-                messages = state.messages.plus(
-                    ChatUIMessage(
-                        content = response,
-                        isSender = false,
-                        timestamp = System.currentTimeMillis(),
-                    )
-                ),
-                messageEntities =
-                    if (insertedMessageEntity == null) {
-                        state.messageEntities
-                    } else {
-                        val newEntities = state.messageEntities.toMutableList()
-                        newEntities.removeIf { it.createdTimestamp == state.id }
-                        newEntities.add(insertedMessageEntity)
-                        newEntities
-                    }
+        chatEntity.messages.add(
+            ChatUIMessage(
+                message = AssistantMessage(content = "Assistant received: $content"),
+                timestamp = System.currentTimeMillis(),
             )
+        )
+        if (!state.config.stream) {
+            emitState {
+                replayState?.copy(
+                    chatEntity = chatEntity.copy(
+                        updateTimestamp = System.currentTimeMillis(),
+                    ),
+                    isWaitingResponse = false,
+                    isLoading = false,
+                )
+            }
+            viewModelScope.launch(dispatcherProvider.io()) {
+                replayState?.let {
+                    chatRepository.insertChatEntity(it.chatEntity)
+                }
+            }
+            return
+        }
+
+        flow {
+            repeat(3) {
+                emit("\nNow is ${System.currentTimeMillis()}, \t\n```kotlin\nprivate val mMessages = ConcurrentHashMap<String, ArrayList<ChatMessage>>()\n```")
+                delay(1000)
+            }
+        }.onCompletion {
+            emitState {
+                replayState?.copy(
+                    chatEntity = chatEntity.copy(
+                        updateTimestamp = System.currentTimeMillis(),
+                    ),
+                    isWaitingResponse = false,
+                    isLoading = false,
+                )
+            }
+            viewModelScope.launch(dispatcherProvider.io()) {
+                replayState?.let {
+                    chatRepository.insertChatEntity(it.chatEntity)
+                }
+            }
+        }.flowOn(dispatcherProvider.io())
+        .collect { what ->
+            (chatEntity.messages.last().message as AssistantMessage).content += what
+
+            emitState {
+                replayState?.copy(
+                    chatEntity = chatEntity.copy(
+                        updateTimestamp = System.currentTimeMillis(),
+                    ),
+                    isWaitingResponse = true,
+                    isLoading = false,
+                )
+            }
         }
     }
 
-    private suspend fun processChat(state: ChatUIState, message: UserMessage) {
+    private suspend fun processChat(state: ChatUIState) {
         if (!state.enableNetwork) {
-            fakeChat(state, message)
+            fakeChat(state, state.chatEntity.messages.last().message.content)
             return
         }
-        withTimeoutOrNull(TIMEOUT) {
-            chatRepository.sendMessage(
-                id = state.id,
-                title = state.title,
-                message = message,
-                onReply = { chatCompletionResponse ->
-                    viewModelScope.launch {
-                        val assistantMessage = chatCompletionResponse.choices.first().message
-                        emitState {
-                            replayState?.let {
-                                it.copy(
-                                    isWaitingResponse = false,
-                                    messages = it.messages.plus(
-                                        ChatUIMessage(
-                                            content = assistantMessage,
-                                            isSender = false,
-                                            timestamp = System.currentTimeMillis(),
-                                            completion_tokens = chatCompletionResponse.usage.completion_tokens,
-                                            prompt_hit_tokens = chatCompletionResponse.usage.prompt_cache_hit_tokens,
-                                            prompt_miss_tokens = chatCompletionResponse.usage.prompt_cache_miss_tokens,
-                                            reasoning_tokens = chatCompletionResponse.usage.completion_tokens_details?.reasoning_tokens?:0,
-                                            timeout = false
-                                        )
-                                    )
-                                )
-                            }
-                        }
-                    }
-                },
-                onError = { error ->
-                    viewModelScope.launch {
-                        emitState {
-                            replayState?.let {
-                                it.copy(
-                                    isWaitingResponse = false,
-                                    messages = it.messages.plus(
-                                        ChatUIMessage(
-                                            content = AssistantMessage(error),
-                                            isSender = false,
-                                            timestamp = System.currentTimeMillis(),
-                                        )
-                                    )
-                                )
-                            }
-                        }
-                    }
-                },
-                onDatabaseUpdate = { messageEntity ->
-                    viewModelScope.launch {
-                        emitState {
-                            replayState?.let { currentState ->
-                                val newEntities = currentState.messageEntities.toMutableList()
-                                newEntities.removeIf { it.createdTimestamp == messageEntity.createdTimestamp }
-                                newEntities.add(messageEntity)
-                                currentState.copy(
-                                    messageEntities = newEntities
-                                )
-                            }
-                        }
-                    }
+        if (state.config.stream) {
+            chatRepository.chatStream(
+                state.config,
+                state.chatEntity.copy(
+                    updateTimestamp = System.currentTimeMillis(),
+                )
+            ).onCompletion {
+                emitState {
+                    replayState?.copy(
+                        chatEntity = state.chatEntity.copy(
+                            updateTimestamp = System.currentTimeMillis(),
+                        ),
+                        isWaitingResponse = false,
+                        isLoading = false,
+                    )
                 }
-            )
+            }.collect { entity ->
+                emitState {
+                    replayState?.copy(
+                        chatEntity = entity,
+                        isWaitingResponse = true,
+                        isLoading = false,
+                    )
+                }
+            }
+        } else {
+            withTimeoutOrNull(TIMEOUT) {
+                val chatEntity = state.chatEntity.copy(
+                    updateTimestamp = System.currentTimeMillis(),
+                )
+                chatRepository.chat(
+                    state.config,
+                    chatEntity
+                )
+                emitState {
+                    replayState?.copy(
+                        chatEntity = chatEntity,
+                        isWaitingResponse = false,
+                        isLoading = false,
+                    )
+                }
+            }
         }
     }
 }

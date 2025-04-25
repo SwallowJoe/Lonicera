@@ -1,7 +1,7 @@
 package com.android.lonicera.components.chat.model
 
 import com.android.lonicera.base.Action
-import com.llmsdk.deepseek.models.ChatMessage
+import com.llmsdk.deepseek.models.ChatModel
 
 sealed class ChatUIAction : Action {
     data object LoadChat : ChatUIAction()
@@ -11,7 +11,7 @@ sealed class ChatUIAction : Action {
     class SetTitle(val title: String) : ChatUIAction()
     class SetSystemPrompt(val systemPrompt: String): ChatUIAction()
     class SendMessage(val content: String) : ChatUIAction()
-    class DeleteChat(val message: ChatMessage): ChatUIAction()
+    class DeleteChat(val message: ChatUIMessage): ChatUIAction()
     class ChangeModel(val model: String) : ChatUIAction()
     data object SwitchNetworkState : ChatUIAction()
     data object SwitchReasonableState : ChatUIAction()
@@ -25,7 +25,7 @@ sealed class ChatUIAction : Action {
         ChatUIAction()
     class SetStops(val stops: List<String>) : ChatUIAction()
 
-    class SetApiKey(val model: String, val apiKey: String) : ChatUIAction()
+    class SetApiKey(val model: ChatModel, val apiKey: String) : ChatUIAction()
     data object UseDevelopApiKey: ChatUIAction()
 
     data object SwitchShowWordTokens: ChatUIAction()

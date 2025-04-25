@@ -1,6 +1,7 @@
 package com.android.lonicera.db
 
 import androidx.room.TypeConverter
+import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.llmsdk.deepseek.models.ChatMessage
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
@@ -61,5 +62,24 @@ object SerializableConverter {
             @Suppress("UNCHECKED_CAST")
             it.readObject() as? List<ChatMessage>
         } ?: emptyList()
+    }
+
+    @TypeConverter
+    fun fromChatUIMessageList(list: ArrayList<ChatUIMessage>?): ByteArray? {
+        if (list == null) return null
+        val output = ByteArrayOutputStream()
+        ObjectOutputStream(output).use {
+            it.writeObject(list)
+        }
+        return output.toByteArray()
+    }
+
+    @TypeConverter
+    fun toChatUIMessageList(bytes: ByteArray?): ArrayList<ChatUIMessage> {
+        if (bytes == null) return ArrayList()
+        return (ObjectInputStream(bytes.inputStream()).use {
+            @Suppress("UNCHECKED_CAST")
+            it.readObject() as? ArrayList<ChatUIMessage>
+        } ?: ArrayList())
     }
 }

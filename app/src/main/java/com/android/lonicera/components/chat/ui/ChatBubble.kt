@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -107,12 +105,12 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                 }
             )
         },
-        horizontalArrangement = if (message.isSender)
+        horizontalArrangement = if (message.fromUser())
                                     Arrangement.End
                                 else
                                     Arrangement.Start
     ) {
-        if (!message.isSender) {
+        if (!message.fromUser()) {
             Spacer(modifier = Modifier.width(8.dp))
         }
 
@@ -120,13 +118,13 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
             modifier = Modifier
                 .animateContentSize()
                 .padding(vertical = 2.dp),
-            horizontalAlignment =   if (message.isSender)
+            horizontalAlignment =   if (message.fromUser())
                                         Alignment.End
                                     else
                                         Alignment.Start
         ) {
             Row {
-                if (!message.isSender) {
+                if (!message.fromUser()) {
                     Image(
                         painter = painterResource(message.avatar),
                         contentDescription = "头像",
@@ -137,13 +135,13 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (message.isSender) MaterialTheme.colorScheme.primaryContainer
+                            if (message.fromUser()) MaterialTheme.colorScheme.primaryContainer
                             else MaterialTheme.colorScheme.surfaceVariant
                         )
                         .padding(12.dp)
                 ) {
                     MarkdownText(
-                        markdown = message.content.content
+                        markdown = message.message.content
                     )
                 }
             }
@@ -151,7 +149,7 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
             if (state.showMessageTimestamp) {
                 hint += SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(message.timestamp))
             }
-            if (!message.isSender && state.showTokenCount) {
+            if (!message.fromUser() && state.showTokenCount) {
                 val totalTokens = message.prompt_hit_tokens + message.prompt_miss_tokens + message.reasoning_tokens + message.completion_tokens
                 hint += " | chat ${message.completion_tokens} tokens | prompt hit ${message.prompt_hit_tokens} tokes, prompt miss ${message.prompt_miss_tokens}"
                 if (message.reasoning_tokens > 0) {
@@ -170,7 +168,7 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
             }
         }
 
-        if (message.isSender) {
+        if (message.fromUser()) {
             Spacer(modifier = Modifier.width(8.dp))
         }
 
@@ -197,14 +195,14 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.copy)) },
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(message.content.content))
+                        clipboardManager.setText(AnnotatedString(message.message.content))
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete)) },
                     onClick = {
-                        viewModel.sendAction(ChatUIAction.DeleteChat(message.content))
+                        viewModel.sendAction(ChatUIAction.DeleteChat(message))
                         showMenu = false
                     }
                 )

@@ -1,14 +1,15 @@
 package com.android.lonicera.components.chat
 
-import android.content.Context
 import android.util.Log
+import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.android.lonicera.db.DatabaseManager
-import com.android.lonicera.db.entity.MessageEntity
+import com.android.lonicera.db.entity.ChatEntity
 import com.llmsdk.deepseek.DeepSeekClient
 import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.BalanceResponse
 import com.llmsdk.deepseek.models.ChatCompletionResponse
+import com.llmsdk.deepseek.models.ChatCompletionResponseChunk
 import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.ChatModel
 import com.llmsdk.deepseek.models.ModelInfo
@@ -17,22 +18,29 @@ import com.llmsdk.deepseek.models.ToolMessage
 import com.llmsdk.tools.ToolManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
 
 class ChatRepository {
     companion object {
         private const val TAG = "ChatRepository"
+
+        val DEFAULT_MODEL = ChatModel.DEEPSEEK_CHAT
     }
 
     private val mChat = DeepSeekClient()
-    private val mConfig = DeepSeekConfig(
-        model = ChatModel.DEEPSEEK_CHAT,
-        apiKey = "",
-        tools = ToolManager.availableTools()
-    )
 
-    private val mMessages = ConcurrentHashMap<String, ArrayList<ChatMessage>>()
+    fun newMessageEntity(title: String, systemPrompt: String): ChatEntity {
+        return ChatEntity(
+            createdTimestamp = System.currentTimeMillis().toString(),
+            title = title,
+            updateTimestamp = System.currentTimeMillis(),
+            systemPrompt = systemPrompt,
+            messages = ArrayList()
+        )
+    }
 
     suspend fun storeSettings(key: String, value: String) {
         DatabaseManager.insertSettings(key, value)
@@ -46,19 +54,9 @@ class ChatRepository {
         return DatabaseManager.querySettingsValue(key)
     }
 
-    fun getModelName(): String {
-        return when (mConfig.model) {
-            ChatModel.DEEPSEEK_CHAT -> "DeepSeek V3"
-            ChatModel.DEEPSEEK_REASONER -> "DeepSeek R1"
-            else -> "DeepSeek V3"
-        }
-    }
-
-    suspend fun setApiKey(model: String, apiKey: String) {
-        if (mConfig.apiKey == apiKey) return
-        mConfig.apiKey = apiKey
+    suspend fun setApiKey(model: ChatModel, apiKey: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            DatabaseManager.insertApiKey(getModelProvider(model), apiKey)
+            DatabaseManager.insertApiKey(model.provider, apiKey)
         }
     }
 
@@ -73,103 +71,150 @@ class ChatRepository {
         return DatabaseManager.queryApiKey(getModelProvider(model))?.apiKey ?: ""
     }
 
-    suspend fun selectModel(modelName: String): DeepSeekConfig {
-        mConfig.model = when (modelName) {
-            "DeepSeek V3" -> ChatModel.DEEPSEEK_CHAT
-            "DeepSeek R1" -> ChatModel.DEEPSEEK_REASONER
-            else -> ChatModel.DEEPSEEK_CHAT
-        }
-        mConfig.apiKey = queryApiKey(modelName)
-        return mConfig
+    fun getDefaultChatModel(): ChatModel {
+        return DEFAULT_MODEL
     }
 
-    fun getConfig(): DeepSeekConfig {
-        return mConfig
+    suspend fun selectModel(model: ChatModel): DeepSeekConfig {
+        return DeepSeekConfig(
+            model = model,
+            apiKey = queryApiKey(model.nickName)
+        )
     }
 
-    fun getSupportedModels(): List<String> {
-        return listOf("DeepSeek V3", "DeepSeek R1")
+    fun getSupportedModels(): List<ChatModel> {
+        return listOf(ChatModel.DEEPSEEK_CHAT, ChatModel.DEEPSEEK_REASONER)
     }
 
-    suspend fun availableModels(): List<ModelInfo> {
-        return mChat.getSupportedModels(mConfig).data
+    suspend fun availableModels(config: DeepSeekConfig): List<ModelInfo> {
+        return mChat.getSupportedModels(config).data
     }
 
-    suspend fun getBalance(): BalanceResponse {
-        return mChat.getBalance(mConfig)
+    suspend fun getBalance(config: DeepSeekConfig): BalanceResponse {
+        return mChat.getBalance(config)
     }
 
-    suspend fun queryMessageEntities(): List<MessageEntity> {
-        val entities = DatabaseManager.queryAllChatMessage()
-        entities.forEach { entity ->
-            mMessages[entity.createdTimestamp] = ArrayList(entity.messages)
-        }
-        return entities
+    suspend fun queryAllChatEntity(): List<ChatEntity> {
+        return DatabaseManager.queryAllChatEntity()
     }
 
     suspend fun deleteChat(createdTimestamp: String) {
-        mMessages.remove(createdTimestamp)
-        DatabaseManager.deleteChatMessage(createdTimestamp)
+        // mMessages.remove(createdTimestamp)
+        DatabaseManager.deleteChatEntity(createdTimestamp)
     }
 
     suspend fun deleteAllChats() {
-        mMessages.clear()
-        DatabaseManager.deleteAllChatMessage()
+        // mMessages.clear()
+        DatabaseManager.deleteAllChatEntity()
     }
 
-    suspend fun queryMessageEntity(createdTimestamp: String): MessageEntity? {
-        return DatabaseManager.queryChatMessage(createdTimestamp)
+    suspend fun queryMessageEntity(createdTimestamp: String): ChatEntity? {
+        return DatabaseManager.queryChatEntity(createdTimestamp)
     }
 
-    suspend fun deleteChatContent(id: String,
-                                  title: String,
-                                  message: ChatMessage,
-                                  onDatabaseUpdate: (MessageEntity) -> Unit) {
-
-        mMessages[id]?.let { messages ->
-            if (messages.remove(message)) {
-                DatabaseManager.insertChatMessage(id, title, messages)?.let(onDatabaseUpdate)
-            }
-        }
+    suspend fun insertChatEntity(chatEntity: ChatEntity) {
+        DatabaseManager.insertChatEntity(chatEntity)
     }
 
-    private fun getMessages(id: String): ArrayList<ChatMessage> {
-        return mMessages[id] ?: run {
-            val newList = ArrayList<ChatMessage>()
-            mMessages[id] = newList
-            newList
-        }
-    }
-
-    suspend fun sendMessage(id: String,
-                            title: String,
-                            message: ChatMessage,
-                            onReply: (ChatCompletionResponse) -> Unit,
-                            onError: (String) -> Unit,
-                            onDatabaseUpdate: (MessageEntity) -> Unit) {
+    suspend fun chat(config: DeepSeekConfig, chatEntity: ChatEntity) {
+        Log.i(TAG, "chat")
         try {
-            val messages = getMessages(id)
-            messages.add(message)
             val response = mChat.chatCompletion(
-                config = mConfig,
-                messages = messages,
+                config = config,
+                messages = chatEntity.chatMessages()
             )
-            val reply = response.choices.first().message
-            messages.add(reply)
-            onReply.invoke(response)
-
-            reply.tool_calls?.let {
-                if (it.isEmpty()) return@let
-                val toolCallReply = processFunctionCall(messages, it)
-                messages.add(toolCallReply.choices.first().message)
-                onReply.invoke(toolCallReply)
-
-                DatabaseManager.insertChatMessage(id, title, messages)?.let(onDatabaseUpdate)
-            } ?: run {
-                DatabaseManager.insertChatMessage(id, title, messages)?.let(onDatabaseUpdate)
+            Log.i(TAG, "chat response: ${response.choices.first()}")
+            chatEntity.messages.add(
+                ChatUIMessage(
+                    message = AssistantMessage(
+                        content = response.choices.first().message.content,
+                        reasoning_content = response.choices.first().message.reasoning_content,
+                        tool_calls = response.choices.first().message.tool_calls
+                    ),
+                    timestamp = System.currentTimeMillis(),
+                    prompt_hit_tokens = response.usage.prompt_cache_hit_tokens,
+                    prompt_miss_tokens = response.usage.prompt_cache_miss_tokens,
+                    reasoning_tokens = response.usage.completion_tokens_details?.reasoning_tokens ?: 0,
+                )
+            )
+            if (response.choices.first().message.tool_calls?.isNotEmpty() == true) {
+                callToolFunctions(config, chatEntity, response.choices.first().message.tool_calls!!)
             }
         } catch (e: Exception) {
-            onError.invoke("**Sorry, I'm having trouble understanding your request. Please try again.**\n\n${e}\n\n${e.stackTrace.joinToString("\n")}")
+            chatEntity.messages.add(
+                ChatUIMessage(
+                    message = AssistantMessage(
+                        content = e.message ?: "An error occurred"
+                    ),
+                    timestamp = System.currentTimeMillis(),
+                    isError = true
+                )
+            )
+        }
+    }
+
+    suspend fun chatStream(config: DeepSeekConfig, chatEntity: ChatEntity): Flow<ChatEntity> {
+        Log.i(TAG, "chatStream")
+        var assistantMessage: AssistantMessage? = null
+        return flow {
+            try {
+                mChat.chatCompletionStream(
+                    config = config,
+                    messages = chatEntity.chatMessages()
+                ).onCompletion { cause ->
+                    if (cause == null) {
+                        assistantMessage?.tool_calls?.let { toolCalls ->
+                            if (toolCalls.isNotEmpty()) {
+                                callToolFunctions(config, chatEntity, toolCalls)
+                            }
+                        }
+                    }
+                    Log.i(
+                        TAG,
+                        "chatStream onCompletion $assistantMessage with cause: ${cause?.stackTraceToString()}"
+                    )
+                }.collect { chunk ->
+                    if (assistantMessage == null) {
+                        assistantMessage = chunk.choices.first().delta
+                        chatEntity.messages.add(
+                            ChatUIMessage(
+                                message = assistantMessage!!,
+                                timestamp = System.currentTimeMillis(),
+                                completion_tokens = chunk.usage?.completion_tokens ?: 0,
+                                prompt_hit_tokens = chunk.usage?.prompt_cache_hit_tokens ?: 0,
+                                prompt_miss_tokens = chunk.usage?.prompt_cache_miss_tokens ?: 0,
+                                reasoning_tokens = chunk.usage?.completion_tokens_details?.reasoning_tokens
+                                    ?: 0,
+                            )
+                        )
+                    } else {
+                        assistantMessage?.content += chunk.choices.first().delta.content
+                        assistantMessage?.reasoning_content += chunk.choices.first().delta.reasoning_content
+                        // TODO: remove duplicate tool calls?
+                        assistantMessage?.tool_calls = chunk.choices.first().delta.tool_calls
+                    }
+                    assistantMessage?.let {
+                        Log.i(TAG, "chatStream collect $chunk")
+                        emit(chatEntity)
+                    }
+                }
+            } catch (e: Exception) {
+                if (assistantMessage == null) {
+                    assistantMessage = AssistantMessage(
+                        content = e.message ?: "An error occurred"
+                    )
+                    chatEntity.messages.add(
+                        ChatUIMessage(
+                            message = assistantMessage!!,
+                            timestamp = System.currentTimeMillis(),
+                            isError = true
+                        )
+                    )
+                } else {
+                    assistantMessage?.content += e.message ?: "An error occurred"
+                }
+                emit(chatEntity)
+            }
         }
     }
 
@@ -181,23 +226,27 @@ class ChatRepository {
         )
     }
 
-    private suspend fun processFunctionCall(messages: ArrayList<ChatMessage>,
-                                            toolCalls: List<ToolCall>): ChatCompletionResponse {
+    private suspend fun callToolFunctions(config: DeepSeekConfig,
+                                          chatEntity: ChatEntity,
+                                          toolCalls: List<ToolCall>) {
         toolCalls.forEach { toolCall ->
             Log.i(TAG, "processFunctionCall: $toolCall")
             val response = ToolManager.callTool(toolCall.function.name,
                 toolCall.function.arguments?.toMap()?: emptyMap())
             Log.i(TAG, "processFunctionCall response: $response")
-            messages.add(
-                ToolMessage(
-                    content = response,
-                    tool_call_id = toolCall.id
+            chatEntity.messages.add(
+                ChatUIMessage(
+                    timestamp = System.currentTimeMillis(),
+                    message = ToolMessage(
+                        content = response,
+                        tool_call_id = toolCall.id
+                    ),
+                    isToolCall = true
                 )
             )
         }
-        return mChat.chatCompletion(
-            config = mConfig,
-            messages = messages,
-        )
+        if (toolCalls.isNotEmpty()) {
+            chatStream(config, chatEntity)
+        }
     }
 }

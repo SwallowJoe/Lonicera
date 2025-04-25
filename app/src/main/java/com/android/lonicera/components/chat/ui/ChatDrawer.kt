@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.ripple.rememberRipple
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -37,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +60,7 @@ import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
 import com.android.lonicera.components.navigation.Destination
+import com.android.lonicera.db.entity.ChatEntity
 
 @Composable
 fun ChatDrawerContent(state: ChatUIState,
@@ -172,8 +171,11 @@ fun ChatDrawerContent(state: ChatUIState,
                     .weight(1f),
                 contentPadding = PaddingValues(bottom = 8.dp)
             ) {
-                items(state.messageEntities.sortedByDescending { it.updateTimestamp }) { messageEntity ->
-                    val isSelected = state.id == messageEntity.createdTimestamp
+                items(
+                    items = state.chatHistories.toList(),
+                    key = { it.first }
+                ) { history ->
+                    val isSelected = state.chatEntity.createdTimestamp == history.first
                     Card(
                         colors = if (isSelected) {
                             CardDefaults.cardColors(
@@ -186,10 +188,10 @@ fun ChatDrawerContent(state: ChatUIState,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                       modifier = Modifier.padding(start = 8.dp, end = 8.dp)
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp)
                     ) {
                         Text(
-                            text = messageEntity.title,
+                            text = history.second,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
@@ -197,7 +199,7 @@ fun ChatDrawerContent(state: ChatUIState,
                                     onClick = {
                                         viewModel.sendAction(
                                             ChatUIAction.SelectChat(
-                                                messageEntity.createdTimestamp
+                                                history.first
                                             )
                                         )
                                         onDrawerCloseRequest()
@@ -206,8 +208,7 @@ fun ChatDrawerContent(state: ChatUIState,
                                     interactionSource = remember { MutableInteractionSource() } // 必须搭配使用
                                 )
                                 .fillMaxWidth()
-                                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)
-                            ,
+                                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp),
                             fontSize = 16.sp,
                             color = if (isSelected) {
                                 MaterialTheme.colorScheme.primary

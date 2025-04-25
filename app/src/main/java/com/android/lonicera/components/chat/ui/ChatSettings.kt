@@ -58,6 +58,7 @@ import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
 import com.android.lonicera.components.widget.ExpandableContent
 import com.android.lonicera.components.widget.MenuWithScroll
+import com.llmsdk.deepseek.models.ChatModel
 import kotlin.math.pow
 
 @Composable
@@ -102,7 +103,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     fontSize = 14.sp
                 )
                 OutlinedTextField(
-                    value = state.title,
+                    value = state.chatEntity.title,
                     onValueChange = {
                         viewModel.sendAction(ChatUIAction.SetTitle(it))
                     },
@@ -120,7 +121,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                         .fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = state.systemPrompt,
+                    value = state.chatEntity.systemPrompt,
                     onValueChange = {
                         viewModel.sendAction(ChatUIAction.SetSystemPrompt(it))
                     },
@@ -145,7 +146,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     title = stringResource(R.string.model_settings)
                 ) {
                     // Text(text = "This is the content that will be displayed when expanded.")
-                    if (state.model.contains("DeepSeek")) {
+                    if (state.model.provider == ChatModel.DEEPSEEK_CHAT.provider) {
                         DeepSeekSettings(
                             state = state,
                             viewModel = viewModel,
@@ -225,16 +226,19 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
 @Preview
 @Composable
 fun ChatSettingsPreview() {
-
+    val chatRepository = ChatRepository()
     val chatViewModel = ChatViewModel(
         resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(),
+        chatRepository = chatRepository,
         dispatcherProvider = DefaultCoroutineDispatcherProvider(),
     )
     chatViewModel.sendAction(ChatUIAction.LoadChat)
     StateEffectScaffold(
         viewModel = chatViewModel,
-        initialState = ChatUIState(model = "", systemPrompt = "Test prompt"),
+        initialState = ChatUIState(
+            model = chatRepository.getDefaultChatModel(),
+            chatEntity = chatRepository.newMessageEntity("new", "test prompt")
+        ),
         sideEffect = { _, _ -> }
     ) { viewModel, state ->
         ChatSettings(state, viewModel) {
@@ -263,8 +267,8 @@ private fun DeepSeekSettings(state: ChatUIState,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         MenuWithScroll(
-            selectedOption = state.model,
-            options = state.supportedModels,
+            selectedOption = state.model.nickName,
+            options = state.supportedModels.map { it.nickName },
             onOptionSelected = {
                 viewModel.sendAction(ChatUIAction.ChangeModel(it))
             }
@@ -384,6 +388,23 @@ private fun DeepSeekSettings(state: ChatUIState,
                 modifier = Modifier
                     .weight(2f)
                     .padding(start = 8.dp)
+            )
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(
+                checked = state.config.stream,
+                onCheckedChange = {
+                    viewModel.sendAction(ChatUIAction.SwitchStreamingState)
+                },
+                modifier = Modifier.scale(scale = 0.6f)
+            )
+            Text(
+                text = stringResource(R.string.stream_option),
+                fontSize = 14.sp
             )
         }
     }

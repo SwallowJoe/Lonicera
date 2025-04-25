@@ -27,6 +27,7 @@
     <string name="input_message">Input message…</string>
     <string name="send">Send</string>
     <string name="reasonable">Reasoning</string>
+    <string name="stream_option">Enable stream</string>
     <string name="chat_timeout">Timeout…</string>
 
     <string name="tool_settings">Tool Settings</string>

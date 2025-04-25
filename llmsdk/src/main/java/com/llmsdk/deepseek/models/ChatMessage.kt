@@ -61,11 +61,11 @@ data class ToolMessage(override val content: String, val tool_call_id: String? =
 @Serializable
 @SerialName("assistant")
 data class AssistantMessage(
-    override val content: String,
+    override var content: String,
     val name: String? = null,
     val prefix: Boolean? = null,
-    val reasoning_content: String? = null,
-    val tool_calls: List<ToolCall>? = null
+    var reasoning_content: String? = null,
+    var tool_calls: List<ToolCall>? = null
 ) : ChatMessage {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
