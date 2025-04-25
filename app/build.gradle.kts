@@ -1,7 +1,10 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -22,8 +25,13 @@ android {
     }
 
     buildTypes {
+        val deepSeekApiKey = getLocalProperties().getProperty("deepSeekApiKey")
+        debug {
+            buildConfigField("String", "DEEP_SEEK_API_KEY", "\"$deepSeekApiKey\"")
+        }
         release {
             isMinifyEnabled = false
+            buildConfigField("String", "DEEP_SEEK_API_KEY", "\"$deepSeekApiKey\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -39,6 +47,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
@@ -58,8 +67,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.hilt.navigation.fragment)
 
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.io.modelcontextprotocol.kotlin.sdk)
     implementation(libs.compose.markdown)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -71,17 +80,32 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
 
-    implementation(libs.io.modelcontextprotocol.kotlin.sdk)
-    implementation(libs.slf4j.nop)
-    implementation(libs.anthropic.java)
-    implementation(project(":mcpclient"))
-    implementation(project(":mcpserver"))
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.serialization.json)
+    implementation(libs.ktor.client.logging)
+    implementation(project(":llmsdk"))
 
-    testImplementation(libs.junit)
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
+
+    // testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+
+fun getLocalProperties(): Properties {
+    val localPropertiesFile = rootProject.file("local.properties")
+    val localProperties = Properties()
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { localProperties.load(it) }
+    }
+    return localProperties
 }

@@ -7,4 +7,5 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.0" apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlinx.serialization) apply false
+    alias(libs.plugins.ksp) apply false
 }
