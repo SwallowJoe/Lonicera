@@ -20,17 +20,21 @@ data class ChatCompletionRequest(
     val logprobs: Boolean? = null,
     val top_logprobs: Int? = null
 ) {
-    public class Builder {
+    class Builder {
         private var messages = mutableListOf<ChatMessage>()
         private var params: ChatCompletionParams = ChatCompletionParams(
             model = ChatModel.DEEPSEEK_CHAT,
         )
 
-        public fun messages(block: MessageBuilder.() -> Unit) {
+        fun messages(block: MessageBuilder.() -> Unit) {
             messages.addAll(MessageBuilder().apply(block).build())
         }
 
-        public fun params(block: ChatCompletionParams.Builder.() -> Unit) {
+        fun messages(list: List<ChatMessage>) {
+            messages.addAll(list)
+        }
+
+        fun params(block: ChatCompletionParams.Builder.() -> Unit) {
             params = ChatCompletionParams.Builder().apply(block).build()
         }
 
@@ -38,17 +42,20 @@ data class ChatCompletionRequest(
             params.createRequest(messages)
     }
 
-    public class StreamBuilder {
+    class StreamBuilder {
         private var messages = mutableListOf<ChatMessage>()
         private var params: ChatCompletionParams = ChatCompletionParams(
             model = ChatModel.DEEPSEEK_CHAT,
+            stream = true
         )
-
-        public fun messages(block: MessageBuilder.() -> Unit) {
+        fun messages(list: List<ChatMessage>) {
+            messages.addAll(list)
+        }
+        fun messages(block: MessageBuilder.() -> Unit) {
             messages.addAll(MessageBuilder().apply(block).build())
         }
 
-        public fun params(block: ChatCompletionParams.StreamBuilder.() -> Unit) {
+        fun params(block: ChatCompletionParams.StreamBuilder.() -> Unit) {
             params = ChatCompletionParams.StreamBuilder().apply(block).build()
         }
 
@@ -56,22 +63,24 @@ data class ChatCompletionRequest(
             params.createRequest(messages)
     }
 
-    public class MessageBuilder {
+    class MessageBuilder {
         private val messages = mutableListOf<ChatMessage>()
-
-        public fun system(content: String) {
+        fun messages(list: List<ChatMessage>) {
+            messages.addAll(list)
+        }
+        fun system(content: String) {
             messages.add(SystemMessage(content))
         }
 
-        public fun user(content: String) {
+        fun user(content: String) {
             messages.add(UserMessage(content))
         }
 
-        public fun assistant(content: String) {
+        fun assistant(content: String) {
             messages.add(AssistantMessage(content))
         }
 
-        public fun tool(content: String, toolCallId: String) {
+        fun tool(content: String, toolCallId: String) {
             messages.add(ToolMessage(content, toolCallId))
         }
 

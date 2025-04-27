@@ -17,7 +17,11 @@ sealed interface ChatMessage: java.io.Serializable {
 
 @Serializable
 @SerialName("system")
-data class SystemMessage(override val content: String, val name: String? = null) : ChatMessage
+data class SystemMessage(override val content: String, val name: String? = null) : ChatMessage {
+    override fun toString(): String {
+        return "SystemMessage(content='$content', name=$name)"
+    }
+}
 
 @Serializable
 @SerialName("user")

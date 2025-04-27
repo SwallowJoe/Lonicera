@@ -20,4 +20,8 @@ data class ChatEntity(
     fun filterChatMessages(predicate: (ChatUIMessage) -> Boolean): List<ChatMessage> {
         return messages.filter { predicate(it) }.map { it.message }
     }
+
+    override fun toString(): String {
+        return "ChatEntity{title=$title, createdTimestamp=$createdTimestamp, systemPrompt=$systemPrompt, messages=${messages.joinToString()}}"
+    }
 }

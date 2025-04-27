@@ -5,6 +5,7 @@ import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.android.lonicera.db.DatabaseManager
 import com.android.lonicera.db.entity.ChatEntity
 import com.llmsdk.deepseek.DeepSeekClient
+import com.llmsdk.deepseek.DeepSeekClientStream
 import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.BalanceResponse
@@ -13,15 +14,23 @@ import com.llmsdk.deepseek.models.ChatCompletionResponseChunk
 import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.ChatModel
 import com.llmsdk.deepseek.models.ModelInfo
+import com.llmsdk.deepseek.models.ResponseFormat
+import com.llmsdk.deepseek.models.StopReason
+import com.llmsdk.deepseek.models.Tool
 import com.llmsdk.deepseek.models.ToolCall
+import com.llmsdk.deepseek.models.ToolChoice
 import com.llmsdk.deepseek.models.ToolMessage
 import com.llmsdk.tools.ToolManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ChatRepository {
     companion object {
@@ -30,7 +39,37 @@ class ChatRepository {
         val DEFAULT_MODEL = ChatModel.DEEPSEEK_CHAT
     }
 
-    private val mChat = DeepSeekClient()
+    private var client: DeepSeekClient? = null
+    private var clientStream: DeepSeekClientStream? = null
+
+    private fun getClientStream(token: String): DeepSeekClientStream {
+        return clientStream ?: DeepSeekClientStream(token) {
+            params {
+                chatStream {
+                    model = ChatModel.DEEPSEEK_CHAT
+                }
+            }
+
+        }
+    }
+
+    private fun getClient(token: String): DeepSeekClient {
+        // 如果已经初始化过，直接返回
+        client?.let { return it }
+
+        // 用刚拿到的 token 构造新的 DeepSeekClient
+        val newClient = DeepSeekClient(token) {
+            params {
+                chat {
+                    model = ChatModel.DEEPSEEK_CHAT
+                }
+            }
+        }
+
+        // 缓存起来，下次直接复用
+        client = newClient
+        return newClient
+    }
 
     fun newMessageEntity(title: String, systemPrompt: String): ChatEntity {
         return ChatEntity(
@@ -67,8 +106,12 @@ class ChatRepository {
         }
     }
 
-    private suspend fun queryApiKey(model: String): String {
-        return DatabaseManager.queryApiKey(getModelProvider(model))?.apiKey ?: ""
+    private suspend fun queryApiKey(model: ChatModel): String {
+        return queryApiKey(model.provider)
+    }
+
+    private suspend fun queryApiKey(modelProvider: String): String {
+        return DatabaseManager.queryApiKey(getModelProvider(modelProvider))?.apiKey ?: ""
     }
 
     fun getDefaultChatModel(): ChatModel {
@@ -78,7 +121,8 @@ class ChatRepository {
     suspend fun selectModel(model: ChatModel): DeepSeekConfig {
         return DeepSeekConfig(
             model = model,
-            apiKey = queryApiKey(model.nickName)
+            apiKey = queryApiKey(model.nickName),
+            tools = ToolManager.availableTools()
         )
     }
 
@@ -86,12 +130,12 @@ class ChatRepository {
         return listOf(ChatModel.DEEPSEEK_CHAT, ChatModel.DEEPSEEK_REASONER)
     }
 
-    suspend fun availableModels(config: DeepSeekConfig): List<ModelInfo> {
-        return mChat.getSupportedModels(config).data
+    suspend fun availableModels(): List<ModelInfo> {
+        return getClient(queryApiKey(ChatModel.DEEPSEEK_CHAT)).getSupportedModels().data
     }
 
-    suspend fun getBalance(config: DeepSeekConfig): BalanceResponse {
-        return mChat.getBalance(config)
+    suspend fun getBalance(): BalanceResponse {
+        return getClient(queryApiKey(ChatModel.DEEPSEEK_CHAT)).getBalance()
     }
 
     suspend fun queryAllChatEntity(): List<ChatEntity> {
@@ -119,10 +163,24 @@ class ChatRepository {
     suspend fun chat(config: DeepSeekConfig, chatEntity: ChatEntity) {
         Log.i(TAG, "chat")
         try {
-            val response = mChat.chatCompletion(
-                config = config,
-                messages = chatEntity.chatMessages()
-            )
+            val client = getClient(config.apiKey)
+            val response = client.chatCompletion {
+                params {
+                    model = config.model
+                    frequency_penalty = config.frequency_penalty
+                    max_tokens = config.max_tokens
+                    presence_penalty = config.presence_penalty
+                    response_format = config.response_format
+                    stop = config.stop
+                    temperature = config.temperature
+                    top_p = config.top_p
+                    tools = config.tools
+                    tool_choice = config.tool_choice
+                    logprobs = config.logprobs
+                    top_logprobs = config.top_logprobs
+                }
+                messages(list = chatEntity.chatMessages())
+            }
             Log.i(TAG, "chat response: ${response.choices.first()}")
             chatEntity.messages.add(
                 ChatUIMessage(
@@ -153,68 +211,28 @@ class ChatRepository {
         }
     }
 
-    suspend fun chatStream(config: DeepSeekConfig, chatEntity: ChatEntity): Flow<ChatEntity> {
-        Log.i(TAG, "chatStream")
-        var assistantMessage: AssistantMessage? = null
-        return flow {
-            try {
-                mChat.chatCompletionStream(
-                    config = config,
-                    messages = chatEntity.chatMessages()
-                ).onCompletion { cause ->
-                    if (cause == null) {
-                        assistantMessage?.tool_calls?.let { toolCalls ->
-                            if (toolCalls.isNotEmpty()) {
-                                callToolFunctions(config, chatEntity, toolCalls)
-                            }
-                        }
-                    }
-                    Log.i(
-                        TAG,
-                        "chatStream onCompletion $assistantMessage with cause: ${cause?.stackTraceToString()}"
-                    )
-                }.collect { chunk ->
-                    if (assistantMessage == null) {
-                        assistantMessage = chunk.choices.first().delta
-                        chatEntity.messages.add(
-                            ChatUIMessage(
-                                message = assistantMessage!!,
-                                timestamp = System.currentTimeMillis(),
-                                completion_tokens = chunk.usage?.completion_tokens ?: 0,
-                                prompt_hit_tokens = chunk.usage?.prompt_cache_hit_tokens ?: 0,
-                                prompt_miss_tokens = chunk.usage?.prompt_cache_miss_tokens ?: 0,
-                                reasoning_tokens = chunk.usage?.completion_tokens_details?.reasoning_tokens
-                                    ?: 0,
-                            )
-                        )
-                    } else {
-                        assistantMessage?.content += chunk.choices.first().delta.content
-                        assistantMessage?.reasoning_content += chunk.choices.first().delta.reasoning_content
-                        // TODO: remove duplicate tool calls?
-                        assistantMessage?.tool_calls = chunk.choices.first().delta.tool_calls
-                    }
-                    assistantMessage?.let {
-                        Log.i(TAG, "chatStream collect $chunk")
-                        emit(chatEntity)
-                    }
-                }
-            } catch (e: Exception) {
-                if (assistantMessage == null) {
-                    assistantMessage = AssistantMessage(
-                        content = e.message ?: "An error occurred"
-                    )
-                    chatEntity.messages.add(
-                        ChatUIMessage(
-                            message = assistantMessage!!,
-                            timestamp = System.currentTimeMillis(),
-                            isError = true
-                        )
-                    )
-                } else {
-                    assistantMessage?.content += e.message ?: "An error occurred"
-                }
-                emit(chatEntity)
+    suspend fun chatStream(
+        config: DeepSeekConfig,
+        chatEntity: ChatEntity
+    ): Flow<ChatCompletionResponseChunk> {
+        Log.i(TAG, "chatStream $chatEntity")
+        val chatClient = getClientStream(config.apiKey)
+        return chatClient.chatCompletion {
+            params {
+                model = config.model
+                frequency_penalty = config.frequency_penalty
+                max_tokens = config.max_tokens
+                presence_penalty = config.presence_penalty
+                response_format = config.response_format
+                stop = config.stop
+                temperature = config.temperature
+                top_p = config.top_p
+                tools = config.tools
+                tool_choice = config.tool_choice
+                logprobs = config.logprobs
+                top_logprobs = config.top_logprobs
             }
+            messages(list = chatEntity.chatMessages())
         }
     }
 
@@ -246,7 +264,8 @@ class ChatRepository {
             )
         }
         if (toolCalls.isNotEmpty()) {
-            chatStream(config, chatEntity)
+            if (config.stream) chatStream(config, chatEntity)
+            else chat(config, chatEntity)
         }
     }
 }

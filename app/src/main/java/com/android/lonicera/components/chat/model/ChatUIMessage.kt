@@ -23,4 +23,8 @@ data class ChatUIMessage(
     fun fromUser(): Boolean {
         return message is UserMessage
     }
+
+    override fun toString(): String {
+        return message.content
+    }
 }

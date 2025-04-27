@@ -7,13 +7,17 @@ import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.components.chat.ChatRepository
+import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.deepseek.models.ToolMessage
 import com.llmsdk.deepseek.models.UserMessage
+import com.llmsdk.tools.ToolManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -282,8 +286,7 @@ class ChatViewModel(
             }
             else -> ChatModel.DEEPSEEK_CHAT
         }
-        // TODO:
-        // chatRepository.selectModel(model)
+
         return state?.copy(
             model = model
         )
@@ -322,6 +325,7 @@ class ChatViewModel(
     private fun sendMessage(state: ChatUIState?, content: String) {
         if (state == null) return
         if (content.isEmpty()) return
+
         val message = UserMessage(content = content)
         state.chatEntity.messages.add(
             ChatUIMessage(
@@ -340,9 +344,7 @@ class ChatViewModel(
                 ),
             )
             viewModelScope.launch(dispatcherProvider.io()) {
-                replayState?.let {
-                    processChat(it)
-                }
+                processChat(new)
             }
             new
         }
@@ -414,18 +416,17 @@ class ChatViewModel(
 
     private suspend fun processChat(state: ChatUIState) {
         if (!state.enableNetwork) {
-            fakeChat(state, state.chatEntity.messages.last().message.content)
+            fakeChat(state, state.chatEntity.messages.lastOrNull()?.message?.content?:"")
             return
         }
         if (state.config.stream) {
+            val assistantMessage = AssistantMessage(content = "")
             chatRepository.chatStream(
-                state.config,
-                state.chatEntity.copy(
-                    updateTimestamp = System.currentTimeMillis(),
-                )
+                config = state.config,
+                chatEntity = state.chatEntity
             ).onCompletion {
                 emitState {
-                    replayState?.copy(
+                    state.copy(
                         chatEntity = state.chatEntity.copy(
                             updateTimestamp = System.currentTimeMillis(),
                         ),
@@ -433,10 +434,30 @@ class ChatViewModel(
                         isLoading = false,
                     )
                 }
-            }.collect { entity ->
+                viewModelScope.launch(dispatcherProvider.io()) {
+                    replayState?.let {
+                        chatRepository.insertChatEntity(it.chatEntity)
+                    }
+                }
+            }.collect { chunk ->
+                if (state.chatEntity.messages.lastOrNull()?.message != assistantMessage) {
+                    state.chatEntity.messages.add(
+                        ChatUIMessage(
+                            message = assistantMessage,
+                            timestamp = System.currentTimeMillis(),
+                        )
+                    )
+                }
+                assistantMessage.content += chunk.choices.firstOrNull()?.delta?.content ?: ""
+                chunk.choices.firstOrNull()?.delta?.reasoning_content?.let {
+                    assistantMessage.reasoning_content += it
+                }
+
                 emitState {
                     replayState?.copy(
-                        chatEntity = entity,
+                        chatEntity = state.chatEntity.copy(
+                            updateTimestamp = System.currentTimeMillis(),
+                        ),
                         isWaitingResponse = true,
                         isLoading = false,
                     )
@@ -457,6 +478,11 @@ class ChatViewModel(
                         isWaitingResponse = false,
                         isLoading = false,
                     )
+                }
+                viewModelScope.launch(dispatcherProvider.io()) {
+                    replayState?.let {
+                        chatRepository.insertChatEntity(it.chatEntity)
+                    }
                 }
             }
         }

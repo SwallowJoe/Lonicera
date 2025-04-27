@@ -8,6 +8,9 @@ import com.llmsdk.deepseek.models.FunctionRequest
 import com.llmsdk.deepseek.models.Tool
 import com.llmsdk.deepseek.models.ToolCallType
 import com.llmsdk.tools.functions.getWeatherFunctionRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 object ToolManager {
@@ -27,18 +30,17 @@ object ToolManager {
 
     fun initEnv(context: Context) {
         mMcpConnection = BinderMcpClient("weather", "0.0.1", context, "com.android.mcpserverapp")
-    }
-
-    suspend fun callTool(function: String, arguments: Map<String, Any?>): String {
-        if (mMcpConnection?.isConnected() != true) {
+        CoroutineScope(Dispatchers.IO).launch {
             mMcpConnection?.let {
                 it.connect()
                 it.fetchAvailableTools().forEach { mcpTool ->
                     registerFunction(mcpTool.toTool(), it)
                 }
-
             }
         }
+    }
+
+    suspend fun callTool(function: String, arguments: Map<String, Any?>): String {
         val record = mTools[function]
         return record?.connection?.callTool(function, arguments)?.result ?: "[tool call($function) error.]"
     }
