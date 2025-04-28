@@ -14,11 +14,16 @@ data class ChatEntity(
     val messages: ArrayList<ChatUIMessage>
 ) {
     fun chatMessages(): List<ChatMessage> {
+        // 注意这里，只返回非错误消息
         return messages.filter { !it.isError }.map { it.message }
     }
 
     fun filterChatMessages(predicate: (ChatUIMessage) -> Boolean): List<ChatMessage> {
         return messages.filter { predicate(it) }.map { it.message }
+    }
+
+    fun filterMessages(predicate: (ChatUIMessage) -> Boolean): List<ChatUIMessage> {
+        return messages.filter { predicate(it) }.map { it }
     }
 
     override fun toString(): String {

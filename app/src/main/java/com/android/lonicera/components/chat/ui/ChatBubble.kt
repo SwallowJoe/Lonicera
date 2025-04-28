@@ -141,7 +141,7 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                         .padding(12.dp)
                 ) {
                     MarkdownText(
-                        markdown = message.message.content
+                        markdown = message.message.content ?: ""
                     )
                 }
             }
@@ -195,7 +195,7 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.copy)) },
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(message.message.content))
+                        clipboardManager.setText(AnnotatedString(message.message.content?:""))
                         showMenu = false
                     }
                 )

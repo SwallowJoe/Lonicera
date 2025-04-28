@@ -1,46 +1,26 @@
 package com.llmsdk.deepseek.models
 
-import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonContentPolymorphicSerializer
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
 
-// 自定义的序列化器，用于解析包装在字符串中的 JSON 对象
-object FunctionCallArgumentsSerializer : KSerializer<JsonObject> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FunctionCallArguments", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): JsonObject {
-        // 先获取字符串
-        val jsonString = decoder.decodeString()
-        // 将字符串解析成 JsonObject
-        return Json.decodeFromString(JsonObject.serializer(), jsonString)
-    }
-
-    override fun serialize(encoder: Encoder, value: JsonObject) {
-        // 将 JsonObject 序列化成字符串再编码
-        val jsonString = Json.encodeToString(JsonObject.serializer(), value)
-        encoder.encodeString(jsonString)
-    }
-}
-
-@Serializable(with = ToolFunctionSerializer::class)
-sealed interface ToolFunction {
-    val name: String
+@Serializable
+sealed interface ToolFunction : java.io.Serializable {
+    val name: String?
 }
 
 @Serializable
 class FunctionRequest(
-    override val name: String,
+    override val name: String?,
     val description: String?,
+    @Serializable(with = JsonObjectSerializer::class)
     val parameters: JsonObject?,
 ) : ToolFunction {
     override fun equals(other: Any?): Boolean {
@@ -62,10 +42,14 @@ class FunctionRequest(
 
 @Serializable
 class FunctionResponse(
-    override val name: String,
-    @Serializable(with = FunctionCallArgumentsSerializer::class)
-    val arguments: JsonObject?,
+    override var name: String? = null,
+    var arguments: String? = null,
 ) : ToolFunction {
+
+    fun copy(name: String? = this.name, arguments: String? = this.arguments): FunctionResponse {
+        return FunctionResponse(name, arguments)
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is FunctionResponse) return false
@@ -82,12 +66,28 @@ class FunctionResponse(
         "FunctionResponse(name='$name', arguments=$arguments)"
 }
 
-internal object ToolFunctionSerializer : JsonContentPolymorphicSerializer<ToolFunction>(ToolFunction::class) {
-    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<ToolFunction> {
-        return when {
-            "parameters" in element.jsonObject -> FunctionRequest.serializer()
-            "arguments" in element.jsonObject -> FunctionResponse.serializer()
-            else -> throw Exception("Unknown ToolFunction type")
+internal object JsonObjectSerializer : KSerializer<JsonObject?> {
+    // 使用内置 JsonObject 的 descriptor
+    override val descriptor: SerialDescriptor = JsonObject.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: JsonObject?) {
+        require(encoder is JsonEncoder)
+        // 支持 null，也支持正常对象
+        encoder.encodeSerializableValue(JsonObject.serializer().nullable, value)
+    }
+
+    override fun deserialize(decoder: Decoder): JsonObject? {
+        require(decoder is JsonDecoder)
+        return when (val element = decoder.decodeJsonElement()) {
+            is JsonObject -> {
+                // 正常对象
+                decoder.json.decodeFromJsonElement(JsonObject.serializer(), element)
+            }
+            is JsonNull -> null
+            else -> {
+                // 其它类型（如字符串、数字等）一律当作 null 处理
+                null
+            }
         }
     }
 }

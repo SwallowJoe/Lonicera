@@ -13,11 +13,12 @@ data class ChatUIMessage(
     val message: ChatMessage,
     val avatar: Int = if (message !is UserMessage) R.drawable.ai_bot_48px else R.drawable.user, // 本地资源ID
     val isError: Boolean = false,
-    val isToolCall: Boolean = false,
+    var isToolCall: Boolean = false,
+    var isToolResponse: Boolean = false,
     val timestamp: Long,
-    val completion_tokens: Int = 0,
-    val prompt_hit_tokens: Int = 0,
-    val prompt_miss_tokens: Int = 0,
+    var completion_tokens: Int = 0,
+    var prompt_hit_tokens: Int = 0,
+    var prompt_miss_tokens: Int = 0,
     val reasoning_tokens: Int = 0,
 ): java.io.Serializable {
     fun fromUser(): Boolean {
@@ -25,6 +26,6 @@ data class ChatUIMessage(
     }
 
     override fun toString(): String {
-        return message.content
+        return message.toString()
     }
 }

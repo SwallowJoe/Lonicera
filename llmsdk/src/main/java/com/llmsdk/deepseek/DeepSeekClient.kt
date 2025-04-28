@@ -48,9 +48,7 @@ import io.ktor.http.contentType
 import io.ktor.http.headers
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.writer
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -59,11 +57,20 @@ import kotlinx.serialization.json.Json
 import kotlin.random.Random
 
 data class DeepSeekClientConfig (
+    private val token: String,
     val params: DeepSeekParams? = null,
     val jsonConfig: Json = Json,
     val chatCompletionTimeout: Long = 45_000,
     val fimCompletionTimeout: Long = 60_000
-)
+) {
+    fun isSameToken(other: DeepSeekClientConfig): Boolean {
+        return this.token == other.token
+    }
+
+    fun isSameToken(token: String): Boolean {
+        return this.token == token
+    }
+}
 
 abstract class DeepSeekBaseClient(
     val client: HttpClient, val config: DeepSeekClientConfig
@@ -72,7 +79,13 @@ abstract class DeepSeekBaseClient(
         private const val TAG = "DeepSeekClient"
     }
 
+    fun isSameToken(token: String): Boolean {
+        return this.config.isSameToken(token)
+    }
+
     suspend fun chatCompletion(request: ChatCompletionRequest): ChatCompletionResponse {
+        Log.i(TAG, "chatCompletion request: ${config.jsonConfig.encodeToString(request)}")
+
         val response = client.post(urlString = "https://api.deepseek.com/v1/chat/completions") {
             timeout { requestTimeoutMillis = config.chatCompletionTimeout }
             setBody(request)
@@ -100,9 +113,10 @@ abstract class DeepSeekBaseClient(
                     }
                 ) {
                     try {
-                        Log.i(TAG, "chatCompletionStream started ${config.hashCode()}")
+                        // Log.i(TAG, "chatCompletionStream started ${config.hashCode()}")
                         incoming.collect { event ->
                             event.data?.trim()?.takeIf { it != "[DONE]" }?.let { data ->
+                                Log.i(TAG, "chatCompletionStream collect: $data")
                                 val chatChunk = config.jsonConfig.decodeFromString<ChatCompletionResponseChunk>(data)
                                 emit(chatChunk)
                             }
@@ -112,6 +126,7 @@ abstract class DeepSeekBaseClient(
                     }
                 }
             } catch (e: SSEClientException) {
+                Log.e(TAG, "chatCompletionStream SSEClientException: ${e.message}")
                 e.response?.let { response ->
                     throw DeepSeekException.from(response.status.value, response.headers,
                         ResponseError(
@@ -121,8 +136,6 @@ abstract class DeepSeekBaseClient(
                             )
                     ))
                 }
-                Log.e(TAG, "chatCompletionStream SSEClientException: ${e.message}")
-                throw e
             } catch (e: SerializationException) {
                 Log.e(TAG, "chatCompletionStream SerializationException: ${e.message}")
                 throw e
@@ -149,7 +162,7 @@ abstract class DeepSeekBaseClient(
         client.close()
     }
 
-    abstract class Builder(token: String) {
+    abstract class Builder(val token: String) {
         protected var baseUrl: String = "https://api.deepseek.com"
 
         protected var jsonConfig: Json = Json {
@@ -254,6 +267,7 @@ class DeepSeekClient internal constructor(
             return DeepSeekClient(
                 client = client,
                 config = DeepSeekClientConfig(
+                    token = token,
                     params = params,
                     jsonConfig = jsonConfig,
                     chatCompletionTimeout = chatCompletionTimeout,
@@ -342,6 +356,7 @@ class DeepSeekClientStream internal constructor(
             return DeepSeekClientStream(
                 client = client,
                 config = DeepSeekClientConfig(
+                    token = token,
                     params = params,
                     jsonConfig = jsonConfig,
                     chatCompletionTimeout = chatCompletionTimeout,

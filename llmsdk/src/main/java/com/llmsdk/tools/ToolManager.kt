@@ -54,6 +54,7 @@ object ToolManager {
     }
 
     fun registerFunction(function: FunctionRequest) {
+        if (function.name.isNullOrBlank()) return
         if (mTools.containsKey(function.name)) {
             Log.w(TAG, "replace function ${function.name}!")
         }
@@ -61,6 +62,7 @@ object ToolManager {
     }
 
     private fun registerFunction(tool: Tool, connection: McpConnection) {
+        if (tool.function.name.isNullOrBlank()) return
         if (mTools.containsKey(tool.function.name)) {
             Log.w(TAG, "replace function ${tool.function.name}!")
         }

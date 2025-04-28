@@ -9,7 +9,7 @@ data class ChatCompletionResponseChunk(
     val created: Long,
     val model: String,
     val system_fingerprint: String,
-    val choices: List<ChatChoiceChunk>,
+    val choices: List<ChatChoiceChunk>? = null,
     val usage: Usage? = null,
 ) {
     override fun equals(other: Any?): Boolean {

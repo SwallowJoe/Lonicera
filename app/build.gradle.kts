@@ -89,6 +89,7 @@ dependencies {
     implementation(project(":llmsdk"))
 
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.common.jvm)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
 

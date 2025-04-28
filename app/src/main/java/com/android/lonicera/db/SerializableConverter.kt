@@ -3,83 +3,47 @@ package com.android.lonicera.db
 import androidx.room.TypeConverter
 import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.llmsdk.deepseek.models.ChatMessage
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
-import java.io.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 object SerializableConverter {
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        classDiscriminator = "role"
+    }
+
+    // ArrayList<ChatUIMessage> 转换
     @TypeConverter
-    fun fromSerializable(serializable: Serializable?): ByteArray? {
-        if (serializable == null) return null
-        val output = ByteArrayOutputStream()
-        ObjectOutputStream(output).use {
-            it.writeObject(serializable)
-        }
-        return output.toByteArray()
+    fun fromChatUIMessageList(list: ArrayList<ChatUIMessage>): String {
+        return json.encodeToString(list)
     }
 
     @TypeConverter
-    fun toSerializable(byteArray: ByteArray?): Serializable? {
-        if (byteArray == null) return null
-        return ObjectInputStream(byteArray.inputStream()).use {
-            it.readObject() as? Serializable
-        }
+    fun toChatUIMessageList(jsonStr: String): ArrayList<ChatUIMessage> {
+        return json.decodeFromString(jsonStr)
+    }
+
+    // ChatMessage 多态转换
+    @TypeConverter
+    fun fromChatMessage(message: ChatMessage): String {
+        return json.encodeToString(message)
     }
 
     @TypeConverter
-    fun fromSerializableList(list: List<Serializable>?): ByteArray? {
-        if (list == null) return null
-        val output = ByteArrayOutputStream()
-        ObjectOutputStream(output).use { it.writeObject(list) }
-        return output.toByteArray()
+    fun toChatMessage(jsonStr: String): ChatMessage {
+        return json.decodeFromString(jsonStr)
+    }
+
+    // JsonObject 转换
+    @TypeConverter
+    fun fromJsonObject(jsonObject: JsonObject?): String? {
+        return jsonObject?.toString()
     }
 
     @TypeConverter
-    fun toSerializableList(byteArray: ByteArray?): List<Serializable>? {
-        if (byteArray == null) return null
-        return ObjectInputStream(byteArray.inputStream()).use {
-            @Suppress("UNCHECKED_CAST")
-            it.readObject() as? List<Serializable>
-        }
-    }
-
-    @TypeConverter
-    fun fromChatMessageList(list: List<ChatMessage>?): ByteArray? {
-        if (list == null) return null
-        val output = ByteArrayOutputStream()
-        ObjectOutputStream(output).use {
-            it.writeObject(list)
-        }
-        return output.toByteArray()
-    }
-
-    @TypeConverter
-    fun toChatMessageList(bytes: ByteArray?): List<ChatMessage> {
-        if (bytes == null) return emptyList()
-        return ObjectInputStream(bytes.inputStream()).use {
-            @Suppress("UNCHECKED_CAST")
-            it.readObject() as? List<ChatMessage>
-        } ?: emptyList()
-    }
-
-    @TypeConverter
-    fun fromChatUIMessageList(list: ArrayList<ChatUIMessage>?): ByteArray? {
-        if (list == null) return null
-        val output = ByteArrayOutputStream()
-        ObjectOutputStream(output).use {
-            it.writeObject(list)
-        }
-        return output.toByteArray()
-    }
-
-    @TypeConverter
-    fun toChatUIMessageList(bytes: ByteArray?): ArrayList<ChatUIMessage> {
-        if (bytes == null) return ArrayList()
-        return (ObjectInputStream(bytes.inputStream()).use {
-            @Suppress("UNCHECKED_CAST")
-            it.readObject() as? ArrayList<ChatUIMessage>
-        } ?: ArrayList())
+    fun toJsonObject(jsonStr: String?): JsonObject? {
+        return jsonStr?.let { json.parseToJsonElement(it) as JsonObject }
     }
 }

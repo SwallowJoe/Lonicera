@@ -195,6 +195,7 @@ class ChatViewModel(
                             title = resources.getString(R.string.new_chat),
                             systemPrompt = ""
                         ),
+                        chatHistories = emptyMap(),
                         error = null,
                         isWaitingResponse = false,
                         isLoading = false,
@@ -420,10 +421,9 @@ class ChatViewModel(
             return
         }
         if (state.config.stream) {
-            val assistantMessage = AssistantMessage(content = "")
             chatRepository.chatStream(
                 config = state.config,
-                chatEntity = state.chatEntity
+                chatEntity = state.chatEntity.copy()
             ).onCompletion {
                 emitState {
                     state.copy(
@@ -439,23 +439,10 @@ class ChatViewModel(
                         chatRepository.insertChatEntity(it.chatEntity)
                     }
                 }
-            }.collect { chunk ->
-                if (state.chatEntity.messages.lastOrNull()?.message != assistantMessage) {
-                    state.chatEntity.messages.add(
-                        ChatUIMessage(
-                            message = assistantMessage,
-                            timestamp = System.currentTimeMillis(),
-                        )
-                    )
-                }
-                assistantMessage.content += chunk.choices.firstOrNull()?.delta?.content ?: ""
-                chunk.choices.firstOrNull()?.delta?.reasoning_content?.let {
-                    assistantMessage.reasoning_content += it
-                }
-
+            }.collect { entity ->
                 emitState {
                     replayState?.copy(
-                        chatEntity = state.chatEntity.copy(
+                        chatEntity = entity.copy(
                             updateTimestamp = System.currentTimeMillis(),
                         ),
                         isWaitingResponse = true,

@@ -25,10 +25,20 @@ class Tool(
 
 @Serializable
 class ToolCall(
-    val id: String,
-    val type: ToolCallType,
-    val function: FunctionResponse,
-) {
+    val index: Int = 0,
+    val id: String? = null,
+    var type: ToolCallType? = null,
+    var function: FunctionResponse?= null,
+): java.io.Serializable {
+    fun copy(
+        index: Int = this.index,
+        id: String? = this.id,
+        type: ToolCallType? = this.type,
+        function: FunctionResponse? = this.function
+    ): ToolCall {
+        return ToolCall(index, id, type, function)
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ToolCall) return false
@@ -43,5 +53,5 @@ class ToolCall(
     }
 
     override fun toString(): String =
-        "ToolCall(id='$id', type=$type, function=$function)"
+        "ToolCall(index='$index', id='$id', type=$type, function=$function)"
 }

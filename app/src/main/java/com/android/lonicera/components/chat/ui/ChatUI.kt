@@ -205,7 +205,8 @@ fun ChatUI(navHostController: NavHostController) {
                         contentPadding = PaddingValues(8.dp, 8.dp)
                     ) {
                         items(
-                            items = state.chatEntity.messages,
+                            // 仅显示非Tool Call和非Tool Response消息
+                            items = state.chatEntity.filterMessages { !it.isToolCall && !it.isToolResponse },
                             key = { message -> message.uuid }
                         ) { message ->
                             ChatBubble(
