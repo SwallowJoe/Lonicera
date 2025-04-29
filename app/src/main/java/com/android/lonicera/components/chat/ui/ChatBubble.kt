@@ -1,6 +1,7 @@
 package com.android.lonicera.components.chat.ui
 
 import android.icu.text.SimpleDateFormat
+import android.view.MotionEvent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.rememberRipple
@@ -31,10 +34,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -54,12 +59,13 @@ import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import java.util.Date
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMessage) {
     val scope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     var showMenu by remember { mutableStateOf(false) }
-    var touchOffset by remember { mutableStateOf(Offset.Zero) } // 记录触摸点坐标
+    var lastRawPressPosition by remember { mutableStateOf(Offset.Zero) }
     val interactionSource = remember { MutableInteractionSource() }
     var currentPress by remember { mutableStateOf<PressInteraction.Press?>(null) }
     val clipboardManager = LocalClipboardManager.current
@@ -81,6 +87,12 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
         .indication(
             interactionSource = interactionSource,
             indication = rememberRipple())
+        .pointerInteropFilter { event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                lastRawPressPosition = Offset(event.x, event.y)
+            }
+            false
+        }
         .pointerInput(Unit) {
             detectTapGestures(
                 onPress = { offset ->
@@ -99,10 +111,9 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                         }
                     }
                 },
-                onLongPress = { offset: Offset ->
+                onLongPress = { _: Offset ->
                     currentPress?.let {
                         showMenu = true
-                        touchOffset = offset
                     }
                 }
             )
@@ -156,6 +167,40 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                     MarkdownText(
                         markdown = content
                     )
+                    if (showMenu) {
+                        val density = LocalDensity.current
+                        val offset = with(density) {
+                            DpOffset(
+                                x = lastRawPressPosition.x.toDp()
+                                    .coerceIn(0.dp, (configuration.screenWidthDp.dp - 200.dp)),
+                                y = (lastRawPressPosition.y - WindowInsets.systemBars.getTop(this)).toDp()
+                                    .coerceIn(0.dp, (configuration.screenHeightDp.dp - 200.dp))
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = {
+                                showMenu = false
+                            },
+                            offset = offset,
+                            modifier = Modifier.animateContentSize()
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.copy)) },
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(message.message.content?:""))
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete)) },
+                                onClick = {
+                                    viewModel.sendAction(ChatUIAction.DeleteChat(message))
+                                    showMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
             var hint = ""
@@ -183,43 +228,6 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
 
         if (message.fromUser()) {
             Spacer(modifier = Modifier.width(8.dp))
-        }
-
-        if (showMenu) {
-            val density = LocalDensity.current
-            val maxXPx = with(density) { configuration.screenWidthDp.dp.roundToPx() - 200.dp.roundToPx() }
-            val adjustedX = touchOffset.x
-                .toInt()
-                .coerceIn(0, maxXPx) // 限制菜单不超出右边界
-                .minus(50.dp.value) // 水平居中补偿
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = {
-                    showMenu = false
-                },
-                offset = with(density) {
-                    DpOffset(
-                        x = adjustedX.toDp(),
-                        y = (touchOffset.y.toInt()).toDp()
-                    )
-                },
-                modifier = Modifier.animateContentSize()
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.copy)) },
-                    onClick = {
-                        clipboardManager.setText(AnnotatedString(message.message.content?:""))
-                        showMenu = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete)) },
-                    onClick = {
-                        viewModel.sendAction(ChatUIAction.DeleteChat(message))
-                        showMenu = false
-                    }
-                )
-            }
         }
     }
 }

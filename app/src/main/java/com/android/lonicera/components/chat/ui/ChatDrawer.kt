@@ -1,9 +1,17 @@
 package com.android.lonicera.components.chat.ui
 
+import android.R.attr.focusable
+import android.view.MotionEvent
+import android.widget.Toast
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,15 +27,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,40 +48,53 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.PopupProperties
 import androidx.navigation.NavHostController
 import com.android.lonicera.R
 import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
 import com.android.lonicera.components.navigation.Destination
-import com.android.lonicera.db.entity.ChatEntity
 
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun ChatDrawerContent(state: ChatUIState,
-                      viewModel: ChatViewModel,
-                      onDrawerCloseRequest: () -> Unit,
-                      navHostController: NavHostController
+fun ChatDrawerContent(
+    state: ChatUIState,
+    viewModel: ChatViewModel,
+    onDrawerCloseRequest: () -> Unit,
+    navHostController: NavHostController,
 ) {
+    val context = LocalContext.current
     var showCleanHistoryDialog by remember { mutableStateOf(false) }
-
     Box(
         modifier = Modifier
             .fillMaxHeight()
@@ -89,10 +114,21 @@ fun ChatDrawerContent(state: ChatUIState,
                     .background(MaterialTheme.colorScheme.surfaceContainer)
             ) {
                 var useDevelopApi by remember { mutableIntStateOf(0) }
+                LaunchedEffect(useDevelopApi) {
+                    if (useDevelopApi >= 5) {
+                        Toast.makeText(
+                            context,
+                            "使用开发者API Key",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        useDevelopApi = 0
+                    }
+                }
                 Image(
                     painter = painterResource(R.drawable.ai_bot),
                     contentDescription = "AI Bot",
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier
+                        .size(28.dp)
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
@@ -165,17 +201,24 @@ fun ChatDrawerContent(state: ChatUIState,
                 }
             }
 
+            var lastRawPressPosition by remember { mutableStateOf(Offset.Zero) }
+            var showEditHistoryMenuIndex by remember { mutableStateOf<Int?>(null) }
+            val density = LocalDensity.current
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 contentPadding = PaddingValues(bottom = 8.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = state.chatHistories.toList(),
-                    key = { it.first }
-                ) { history ->
+                    key = { index, it -> it.first }
+                ) { index, history ->
                     val isSelected = state.chatEntity.createdTimestamp == history.first
+                    val isMenuExpanded = showEditHistoryMenuIndex == index
+                    val interactionSource = remember { MutableInteractionSource() }
+
                     Card(
                         colors = if (isSelected) {
                             CardDefaults.cardColors(
@@ -188,25 +231,35 @@ fun ChatDrawerContent(state: ChatUIState,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp)
+                        modifier = Modifier
+                            .padding(start = 8.dp, end = 8.dp)
+                            .pointerInteropFilter { event ->
+                                if (event.action == MotionEvent.ACTION_DOWN) {
+                                    lastRawPressPosition = Offset(event.x, event.y)
+                                }
+                                false
+                            }
+                            .combinedClickable(
+                                interactionSource = interactionSource,
+                                indication = rememberRipple(bounded = true),
+                                onClick = {
+                                    viewModel.sendAction(
+                                        ChatUIAction.SelectChat(
+                                            history.first
+                                        )
+                                    )
+                                    onDrawerCloseRequest()
+                                },
+                                onLongClick = {
+                                    showEditHistoryMenuIndex = index
+                                }
+                            )
                     ) {
                         Text(
                             text = history.second,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
-                                .clickable(
-                                    onClick = {
-                                        viewModel.sendAction(
-                                            ChatUIAction.SelectChat(
-                                                history.first
-                                            )
-                                        )
-                                        onDrawerCloseRequest()
-                                    },
-                                    indication = rememberRipple(bounded = true), // 开启涟漪
-                                    interactionSource = remember { MutableInteractionSource() } // 必须搭配使用
-                                )
                                 .fillMaxWidth()
                                 .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp),
                             fontSize = 16.sp,
@@ -216,6 +269,58 @@ fun ChatDrawerContent(state: ChatUIState,
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         )
+                        if (isMenuExpanded) {
+                            val statusBarHeight = with(LocalDensity.current) {
+                                WindowInsets.systemBars.getTop(this)
+                            }
+                            DropdownMenu(
+                                expanded = true,
+                                onDismissRequest = { showEditHistoryMenuIndex = null },
+                                offset = DpOffset(
+                                    x = with(density) { lastRawPressPosition.x.toDp() },
+                                    y = with(density) { (lastRawPressPosition.y - statusBarHeight).toDp() }
+                                ),
+                                modifier = Modifier.animateContentSize(),
+                                properties = PopupProperties(
+                                    dismissOnBackPress = true,
+                                    dismissOnClickOutside = true,
+                                    focusable = true
+                                ),
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text("重命名")
+                                    },
+                                    onClick = {
+                                        showEditHistoryMenuIndex = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(text = buildAnnotatedString {
+                                            withStyle(
+                                                SpanStyle(
+                                                    color = MaterialTheme.colorScheme.error,
+                                                )
+                                            ) {
+                                                append(stringResource(R.string.delete))
+                                            }
+                                            append(" ")
+                                            withStyle(
+                                                SpanStyle(
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            ) {
+                                                append("(不可恢复)")
+                                            }
+                                        })
+                                    },
+                                    onClick = {
+                                        showEditHistoryMenuIndex = null
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -247,7 +352,9 @@ fun ChatDrawerContent(state: ChatUIState,
                 Image(
                     painter = painterResource(R.drawable.add_circle_48px),
                     contentDescription = stringResource(R.string.new_chat),
-                    modifier = Modifier.padding(start = 24.dp).size(16.dp)
+                    modifier = Modifier
+                        .padding(start = 24.dp)
+                        .size(16.dp)
                 )
 
                 Text(
@@ -282,7 +389,9 @@ fun ChatDrawerContent(state: ChatUIState,
                 Image(
                     painter = painterResource(R.drawable.build_48px),
                     contentDescription = stringResource(R.string.tool_settings),
-                    modifier = Modifier.padding(start = 24.dp).size(16.dp)
+                    modifier = Modifier
+                        .padding(start = 24.dp)
+                        .size(16.dp)
                 )
 
                 Text(
@@ -317,7 +426,9 @@ fun ChatDrawerContent(state: ChatUIState,
                 Image(
                     painter = painterResource(R.drawable.monitoring_48px),
                     contentDescription = stringResource(R.string.model_provider_info),
-                    modifier = Modifier.padding(start = 24.dp).size(16.dp)
+                    modifier = Modifier
+                        .padding(start = 24.dp)
+                        .size(16.dp)
                 )
 
                 Text(
@@ -352,7 +463,9 @@ fun ChatDrawerContent(state: ChatUIState,
                 Image(
                     painter = painterResource(R.drawable.settings_48px),
                     contentDescription = stringResource(R.string.settings),
-                    modifier = Modifier.padding(start = 24.dp).size(16.dp)
+                    modifier = Modifier
+                        .padding(start = 24.dp)
+                        .size(16.dp)
                 )
 
                 Text(
@@ -387,7 +500,9 @@ fun ChatDrawerContent(state: ChatUIState,
                 Image(
                     painter = painterResource(R.drawable.info_48px),
                     contentDescription = stringResource(R.string.about),
-                    modifier = Modifier.padding(start = 24.dp).size(16.dp)
+                    modifier = Modifier
+                        .padding(start = 24.dp)
+                        .size(16.dp)
                 )
 
                 Text(

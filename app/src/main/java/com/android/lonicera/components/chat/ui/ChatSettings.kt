@@ -144,8 +144,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                         .fillMaxWidth(),
                     title = stringResource(R.string.model_settings)
                 ) {
-                    // Text(text = "This is the content that will be displayed when expanded.")
-                    if (state.chatConfig.model == ChatModel.DEEPSEEK_CHAT) {
+                    if (state.chatConfig.model.provider == ChatModel.DEEPSEEK_CHAT.provider) {
                         DeepSeekSettings(
                             state = state,
                             viewModel = viewModel,

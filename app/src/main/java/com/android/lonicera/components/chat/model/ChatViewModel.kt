@@ -10,6 +10,7 @@ import com.android.lonicera.components.chat.ChatRepository
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.base.ChatModel
 import com.llmsdk.deepseek.models.UserMessage
+import com.llmsdk.log.ALog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -42,9 +43,7 @@ class ChatViewModel(
     override fun onAction(action: ChatUIAction, currentState: ChatUIState?) {
         when (action) {
             is ChatUIAction.LoadChat -> {
-                viewModelScope.launch(dispatcherProvider.io()) {
-                    loadChat(currentState)
-                }
+                loadChat(currentState)
             }
             is ChatUIAction.NewChat -> {
                 if (currentState == null || currentState.chatEntity.messages.isEmpty()) {
@@ -301,32 +300,37 @@ class ChatViewModel(
         }
     }
 
-    private suspend fun loadChat(state: ChatUIState?) {
-        emitState {
+    private fun loadChat(state: ChatUIState?) {
+        viewModelScope.launch(dispatcherProvider.io()) {
+            ALog.i(TAG, "loadChat $state")
             val chatEntities = chatRepository.queryAllChatEntity().sortedByDescending { it.updateTimestamp }
             // delay(5000)
             val chatEntity = chatEntities.maxByOrNull { it.updateTimestamp }
-            state?.copy(
-                chatEntity = chatEntity ?: chatRepository.newMessageEntity(
-                    title = resources.getString(R.string.new_chat),
-                    systemPrompt = ""
-                ),
-                supportedModels = chatRepository.getSupportedModels(),
-                chatHistories = chatEntities.associate { it.createdTimestamp to it.title },
-                chatConfig = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
-                isWaitingResponse = false,
-                isLoading = false,
-            ) ?: ChatUIState(
-                chatEntity = chatEntity ?: chatRepository.newMessageEntity(
-                    title = resources.getString(R.string.new_chat),
-                    systemPrompt = ""
-                ),
-                chatConfig = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
-                chatHistories = chatEntities.associate { it.createdTimestamp to it.title },
-                isWaitingResponse = false,
-                isLoading = false,
-                supportedModels = chatRepository.getSupportedModels()
-            )
+            val chatConfig = chatRepository.selectModel(chatRepository.getSupportedModels().first())
+            val chatHistories = chatEntities.associate { it.createdTimestamp to it.title }
+            emitState {
+                state?.copy(
+                    chatEntity = chatEntity ?: chatRepository.newMessageEntity(
+                        title = resources.getString(R.string.new_chat),
+                        systemPrompt = ""
+                    ),
+                    supportedModels = chatRepository.getSupportedModels(),
+                    chatHistories = chatHistories,
+                    chatConfig = chatConfig,
+                    isWaitingResponse = false,
+                    isLoading = false,
+                ) ?: ChatUIState(
+                    chatEntity = chatEntity ?: chatRepository.newMessageEntity(
+                        title = resources.getString(R.string.new_chat),
+                        systemPrompt = ""
+                    ),
+                    chatConfig = chatConfig,
+                    chatHistories = chatHistories,
+                    isWaitingResponse = false,
+                    isLoading = false,
+                    supportedModels = chatRepository.getSupportedModels()
+                )
+            }
         }
     }
 

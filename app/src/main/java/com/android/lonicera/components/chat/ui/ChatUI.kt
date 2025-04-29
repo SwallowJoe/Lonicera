@@ -57,13 +57,7 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatUI(navHostController: NavHostController) {
-    val chatViewModel = ChatViewModel(
-        resources = LocalContext.current.resources,
-        chatRepository = ChatRepository(),
-        dispatcherProvider = DefaultCoroutineDispatcherProvider(),
-    )
-    chatViewModel.sendAction(ChatUIAction.LoadChat)
+fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
     var showChatSettings by remember { mutableStateOf(false) }
     StateEffectScaffold(
         viewModel = chatViewModel,
@@ -143,9 +137,13 @@ fun ChatUI(navHostController: NavHostController) {
                     ) {
                         if (state.chatEntity.messages.isNotEmpty()) {
                             if (state.isWaitingResponse) {
-                                listState.scrollToItem(state.chatEntity.messages.lastIndex)
+                                listState.scrollToItem(
+                                    index = state.chatEntity.messages.lastIndex,
+                                    scrollOffset = Int.MAX_VALUE)
                             } else {
-                                listState.animateScrollToItem(state.chatEntity.messages.lastIndex)
+                                listState.animateScrollToItem(
+                                    index = state.chatEntity.messages.lastIndex,
+                                    scrollOffset = Int.MAX_VALUE)
                             }
                         }
                     }
