@@ -1,9 +1,7 @@
 package com.android.lonicera.components.chat.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -143,7 +141,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                     // .background(MaterialTheme.colorScheme.surfaceContainerLow)
             ) {
                 MenuWithScroll(
-                    selectedOption = state.model.nickName,
+                    selectedOption = state.chatConfig.model.nickName,
                     options = state.supportedModels.map { it.nickName },
                     onOptionSelected = {
                         viewModel.sendAction(ChatUIAction.ChangeModel(it))

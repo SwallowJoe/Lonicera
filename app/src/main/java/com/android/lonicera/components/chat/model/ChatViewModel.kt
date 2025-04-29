@@ -8,7 +8,7 @@ import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.components.chat.ChatRepository
 import com.llmsdk.deepseek.models.AssistantMessage
-import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.base.ChatModel
 import com.llmsdk.deepseek.models.UserMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -83,9 +83,7 @@ class ChatViewModel(
             }
 
             is ChatUIAction.ChangeModel -> {
-                emitState {
-                    changeModel(currentState, action.model)
-                }
+                changeModel(currentState, action.model)
             }
 
             is ChatUIAction.SwitchNetworkState -> {
@@ -108,8 +106,8 @@ class ChatViewModel(
             is ChatUIAction.SwitchStreamingState -> {
                 emitState {
                     currentState?.copy(
-                        config = currentState.config.copy(
-                            stream = !currentState.config.stream
+                        chatConfig = currentState.chatConfig.copy(
+                            stream = !currentState.chatConfig.stream
                         )
                     )
                 }
@@ -120,7 +118,7 @@ class ChatViewModel(
             is ChatUIAction.SetMaxTokens -> {
                 emitState {
                     currentState?.copy(
-                        config = currentState.config.copy(
+                        chatConfig = currentState.chatConfig.copy(
                             max_tokens = action.maxTokens
                         )
                     )
@@ -135,7 +133,7 @@ class ChatViewModel(
             is ChatUIAction.SetTemperature -> {
                 emitState {
                     currentState?.copy(
-                        config = currentState.config.copy(
+                        chatConfig = currentState.chatConfig.copy(
                             temperature = action.temperature.toDouble()
                         )
                     )
@@ -144,20 +142,20 @@ class ChatViewModel(
             is ChatUIAction.SetTopP -> {
                 emitState {
                     currentState?.copy(
-                        config = currentState.config.copy(
+                        chatConfig = currentState.chatConfig.copy(
                             top_p = action.topP.toDouble()
                         )
                     )
                 }
             }
             is ChatUIAction.SetApiKey -> {
-                if (action.apiKey == currentState?.config?.apiKey) {
+                if (action.apiKey == currentState?.chatConfig?.apiKey) {
                     return
                 }
                 emitState {
                     chatRepository.setApiKey(action.model, action.apiKey)
                     currentState?.copy(
-                        config = currentState.config.copy(
+                        chatConfig = currentState.chatConfig.copy(
                             apiKey = action.apiKey
                         )
                     )
@@ -169,11 +167,11 @@ class ChatViewModel(
                     emitState {
                         val developApiKey = BuildConfig.DEEP_SEEK_API_KEY
                         chatRepository.setApiKey(
-                            currentState.model,
+                            currentState.chatConfig.model,
                             developApiKey
                         )
                         currentState.copy(
-                            config = currentState.config.copy(
+                            chatConfig = currentState.chatConfig.copy(
                                 apiKey = developApiKey
                             )
                         )
@@ -273,25 +271,39 @@ class ChatViewModel(
         }
     }
 
-    private suspend fun changeModel(state: ChatUIState?, nickName: String): ChatUIState? {
-        val model = when (nickName) {
-            ChatModel.DEEPSEEK_CHAT.nickName -> {
-                ChatModel.DEEPSEEK_CHAT
+    private fun changeModel(state: ChatUIState?, nickName: String) {
+        emitState {
+            val model = when (nickName) {
+                ChatModel.DEEPSEEK_CHAT.nickName -> {
+                    ChatModel.DEEPSEEK_CHAT
+                }
+                ChatModel.DEEPSEEK_REASONER.nickName -> {
+                    ChatModel.DEEPSEEK_REASONER
+                }
+                else -> ChatModel.DEEPSEEK_CHAT
             }
-            ChatModel.DEEPSEEK_REASONER.nickName -> {
-                ChatModel.DEEPSEEK_REASONER
-            }
-            else -> ChatModel.DEEPSEEK_CHAT
+            state?.copy(
+                chatConfig = state.chatConfig.copy(
+                    model = model
+                )
+            )
         }
+    }
 
-        return state?.copy(
-            model = model
-        )
+    private suspend fun updateChatHistory() {
+        val chatHistories = chatRepository.queryAllChatEntity()
+            .sortedByDescending { it.updateTimestamp }
+            .associate { it.createdTimestamp to it.title }
+        emitState {
+            replayState?.copy(
+                chatHistories = chatHistories
+            )
+        }
     }
 
     private suspend fun loadChat(state: ChatUIState?) {
         emitState {
-            val chatEntities = chatRepository.queryAllChatEntity()
+            val chatEntities = chatRepository.queryAllChatEntity().sortedByDescending { it.updateTimestamp }
             // delay(5000)
             val chatEntity = chatEntities.maxByOrNull { it.updateTimestamp }
             state?.copy(
@@ -301,7 +313,7 @@ class ChatViewModel(
                 ),
                 supportedModels = chatRepository.getSupportedModels(),
                 chatHistories = chatEntities.associate { it.createdTimestamp to it.title },
-                config = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
+                chatConfig = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
                 isWaitingResponse = false,
                 isLoading = false,
             ) ?: ChatUIState(
@@ -309,8 +321,7 @@ class ChatViewModel(
                     title = resources.getString(R.string.new_chat),
                     systemPrompt = ""
                 ),
-                model = chatRepository.getDefaultChatModel(),
-                config = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
+                chatConfig = chatRepository.selectModel(chatRepository.getSupportedModels().first()),
                 chatHistories = chatEntities.associate { it.createdTimestamp to it.title },
                 isWaitingResponse = false,
                 isLoading = false,
@@ -322,6 +333,7 @@ class ChatViewModel(
     private fun sendMessage(state: ChatUIState?, content: String) {
         if (state == null) return
         if (content.isEmpty()) return
+        val showUpdateHistory = state.chatEntity.messages.isEmpty()
 
         val message = UserMessage(content = content)
         state.chatEntity.messages.add(
@@ -342,6 +354,9 @@ class ChatViewModel(
             )
             viewModelScope.launch(dispatcherProvider.io()) {
                 processChat(new)
+                if (showUpdateHistory) {
+                    updateChatHistory()
+                }
             }
             new
         }
@@ -357,7 +372,7 @@ class ChatViewModel(
                 timestamp = System.currentTimeMillis(),
             )
         )
-        if (!state.config.stream) {
+        if (!state.chatConfig.stream) {
             emitState {
                 replayState?.copy(
                     chatEntity = chatEntity.copy(
@@ -416,9 +431,9 @@ class ChatViewModel(
             fakeChat(state, state.chatEntity.messages.lastOrNull()?.message?.content?:"")
             return
         }
-        if (state.config.stream) {
+        if (state.chatConfig.stream) {
             chatRepository.chatStream(
-                config = state.config,
+                config = state.chatConfig,
                 chatEntity = state.chatEntity.copy()
             ).onCompletion {
                 emitState {
@@ -452,7 +467,7 @@ class ChatViewModel(
                     updateTimestamp = System.currentTimeMillis(),
                 )
                 chatRepository.chat(
-                    state.config,
+                    state.chatConfig,
                     chatEntity
                 )
                 emitState {

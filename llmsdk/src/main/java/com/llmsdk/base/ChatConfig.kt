@@ -1,13 +1,12 @@
-package com.llmsdk.deepseek
+package com.llmsdk.base
 
-import com.llmsdk.deepseek.models.ChatModel
 import com.llmsdk.deepseek.models.ResponseFormat
 import com.llmsdk.deepseek.models.StopReason
 import com.llmsdk.deepseek.models.StreamOptions
 import com.llmsdk.deepseek.models.Tool
 import com.llmsdk.deepseek.models.ToolChoice
 
-data class DeepSeekConfig(
+data class ChatConfig(
     var model: ChatModel = ChatModel.DEEPSEEK_CHAT,
     var apiKey: String = "",
     var frequency_penalty: Double = 0.0,

@@ -1,5 +1,6 @@
 package com.llmsdk.deepseek.models
 
+import com.llmsdk.base.ChatModel
 import kotlinx.serialization.Serializable
 
 @Serializable

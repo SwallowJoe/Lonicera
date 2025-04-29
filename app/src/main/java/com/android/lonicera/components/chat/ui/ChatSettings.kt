@@ -40,7 +40,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
@@ -58,7 +57,7 @@ import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
 import com.android.lonicera.components.widget.ExpandableContent
 import com.android.lonicera.components.widget.MenuWithScroll
-import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.base.ChatModel
 import kotlin.math.pow
 
 @Composable
@@ -67,13 +66,13 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
     val application = LocalContext.current.applicationContext
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
-    val apiKey = remember { mutableStateOf(state.config.apiKey) }
+    val apiKey = remember { mutableStateOf(state.chatConfig.apiKey) }
 
     Dialog(
         onDismissRequest = {
             viewModel.sendAction(
                 ChatUIAction.SetApiKey(
-                    model = state.model,
+                    model = state.chatConfig.model,
                     apiKey = apiKey.value
                 )
             )
@@ -146,7 +145,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                     title = stringResource(R.string.model_settings)
                 ) {
                     // Text(text = "This is the content that will be displayed when expanded.")
-                    if (state.model.provider == ChatModel.DEEPSEEK_CHAT.provider) {
+                    if (state.chatConfig.model == ChatModel.DEEPSEEK_CHAT) {
                         DeepSeekSettings(
                             state = state,
                             viewModel = viewModel,
@@ -210,7 +209,7 @@ fun ChatSettings(state: ChatUIState, viewModel: ChatViewModel, onDismissRequest:
                         onClick = {
                             viewModel.sendAction(
                                 ChatUIAction.SetApiKey(
-                                    model = state.model,
+                                    model = state.chatConfig.model,
                                     apiKey = apiKey.value
                                 )
                             )
@@ -236,7 +235,7 @@ fun ChatSettingsPreview() {
     StateEffectScaffold(
         viewModel = chatViewModel,
         initialState = ChatUIState(
-            model = chatRepository.getDefaultChatModel(),
+            // model = chatRepository.getDefaultChatModel(),
             chatEntity = chatRepository.newMessageEntity("new", "test prompt")
         ),
         sideEffect = { _, _ -> }
@@ -267,7 +266,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         MenuWithScroll(
-            selectedOption = state.model.nickName,
+            selectedOption = state.chatConfig.model.nickName,
             options = state.supportedModels.map { it.nickName },
             onOptionSelected = {
                 viewModel.sendAction(ChatUIAction.ChangeModel(it))
@@ -334,7 +333,7 @@ private fun DeepSeekSettings(state: ChatUIState,
                 modifier = Modifier.weight(8f)
             )
             Text(
-                text = "${state.config.max_tokens} tokens",
+                text = "${state.chatConfig.max_tokens} tokens",
                 modifier = Modifier
                     .weight(2f)
                     .padding(start = 8.dp)
@@ -350,7 +349,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Slider(
-                value = state.config.temperature.toFloat(),
+                value = state.chatConfig.temperature.toFloat(),
                 valueRange = 0f..2f,
                 onValueChange = {
                     viewModel.sendAction(ChatUIAction.SetTemperature(it))
@@ -359,7 +358,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             )
             Text(
                 // text取state.config.temperature的小数点位保留两位
-                text = "%.2f".format(state.config.temperature),
+                text = "%.2f".format(state.chatConfig.temperature),
                 modifier = Modifier
                     .weight(2f)
                     .padding(start = 8.dp)
@@ -375,7 +374,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Slider(
-                value = state.config.top_p.toFloat(),
+                value = state.chatConfig.top_p.toFloat(),
                 valueRange = 0f..1f,
                 onValueChange = {
                     viewModel.sendAction(ChatUIAction.SetTopP(it))
@@ -384,7 +383,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             )
             Text(
                 // text取state.config.temperature的小数点位保留两位
-                text = "%.2f".format(state.config.top_p),
+                text = "%.2f".format(state.chatConfig.top_p),
                 modifier = Modifier
                     .weight(2f)
                     .padding(start = 8.dp)
@@ -396,7 +395,7 @@ private fun DeepSeekSettings(state: ChatUIState,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Switch(
-                checked = state.config.stream,
+                checked = state.chatConfig.stream,
                 onCheckedChange = {
                     viewModel.sendAction(ChatUIAction.SwitchStreamingState)
                 },

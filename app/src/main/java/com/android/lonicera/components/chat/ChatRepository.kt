@@ -5,10 +5,10 @@ import com.android.lonicera.db.DatabaseManager
 import com.android.lonicera.db.entity.ChatEntity
 import com.llmsdk.deepseek.DeepSeekClient
 import com.llmsdk.deepseek.DeepSeekClientStream
-import com.llmsdk.deepseek.DeepSeekConfig
+import com.llmsdk.base.ChatConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.BalanceResponse
-import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.base.ChatModel
 import com.llmsdk.deepseek.models.FunctionResponse
 import com.llmsdk.deepseek.models.ModelInfo
 import com.llmsdk.deepseek.models.ToolCall
@@ -111,8 +111,8 @@ class ChatRepository {
         return DEFAULT_MODEL
     }
 
-    suspend fun selectModel(model: ChatModel): DeepSeekConfig {
-        return DeepSeekConfig(
+    suspend fun selectModel(model: ChatModel): ChatConfig {
+        return ChatConfig(
             model = model,
             apiKey = queryApiKey(model.nickName),
             tools = ToolManager.availableTools()
@@ -153,7 +153,7 @@ class ChatRepository {
         DatabaseManager.insertChatEntity(chatEntity)
     }
 
-    suspend fun chat(config: DeepSeekConfig, chatEntity: ChatEntity) {
+    suspend fun chat(config: ChatConfig, chatEntity: ChatEntity) {
         ALog.i(TAG, "chat")
         try {
             val client = getClient(config.apiKey)
@@ -222,106 +222,127 @@ class ChatRepository {
     }
 
     suspend fun chatStream(
-        config: DeepSeekConfig,
+        config: ChatConfig,
         chatEntity: ChatEntity
     ): Flow<ChatEntity> {
         ALog.i(TAG, "chatStream $chatEntity")
         val chatClient = getClientStream(config.apiKey)
         return flow {
             val assistantMessage = AssistantMessage(content = "")
-            chatClient.chatCompletion {
-                params {
-                    model = config.model
-                    frequency_penalty = config.frequency_penalty
-                    max_tokens = config.max_tokens
-                    presence_penalty = config.presence_penalty
-                    response_format = config.response_format
-                    stop = config.stop
-                    temperature = config.temperature
-                    top_p = config.top_p
-                    tools = config.tools
-                    tool_choice = config.tool_choice
-                    logprobs = config.logprobs
-                    top_logprobs = config.top_logprobs
-                }
-                messages(list = chatEntity.chatMessages())
-            }.onCompletion {
-                emit(chatEntity)
-            }.collect { chunk ->
-                if (chatEntity.messages.lastOrNull()?.message != assistantMessage) {
-                    chatEntity.messages.add(
-                        ChatUIMessage(
-                            message = assistantMessage,
-                            timestamp = System.currentTimeMillis(),
-                            prompt_hit_tokens = chunk.usage?.prompt_cache_hit_tokens?:0,
-                            prompt_miss_tokens = chunk.usage?.prompt_cache_miss_tokens?:0,
-                            reasoning_tokens = chunk.usage?.completion_tokens_details?.reasoning_tokens
-                                ?: 0,
+            try {
+                chatClient.chatCompletion {
+                    params {
+                        model = config.model
+                        frequency_penalty = config.frequency_penalty
+                        max_tokens = config.max_tokens
+                        presence_penalty = config.presence_penalty
+                        response_format = config.response_format
+                        stop = config.stop
+                        temperature = config.temperature
+                        top_p = config.top_p
+                        tools = config.tools
+                        tool_choice = config.tool_choice
+                        logprobs = config.logprobs
+                        top_logprobs = config.top_logprobs
+                    }
+                    messages(list = chatEntity.chatMessages())
+                }.onCompletion {
+                    emit(chatEntity)
+                }.collect { chunk ->
+                    if (chatEntity.messages.lastOrNull()?.message != assistantMessage) {
+                        chatEntity.messages.add(
+                            ChatUIMessage(
+                                message = assistantMessage,
+                                timestamp = System.currentTimeMillis(),
+                                prompt_hit_tokens = chunk.usage?.prompt_cache_hit_tokens ?: 0,
+                                prompt_miss_tokens = chunk.usage?.prompt_cache_miss_tokens ?: 0,
+                                reasoning_tokens = chunk.usage?.completion_tokens_details?.reasoning_tokens
+                                    ?: 0,
+                            )
                         )
-                    )
-                }
-                chunk.usage?.let { usage ->
-                    chatEntity.messages.lastOrNull()?.apply {
-                        completion_tokens += usage.completion_tokens
-                        prompt_hit_tokens += usage.prompt_cache_hit_tokens
-                        prompt_miss_tokens += usage.prompt_cache_miss_tokens
                     }
-                }
-                chunk.choices?.firstOrNull()?.delta?.let { chunkMessage ->
-                    ALog.i(TAG, "chatStream chunk: $chunk")
-                    chunkMessage.content?.let { content ->
-                        if (content.isNotEmpty()) {
-                            assistantMessage.content += content
+                    chunk.usage?.let { usage ->
+                        chatEntity.messages.lastOrNull()?.apply {
+                            completion_tokens += usage.completion_tokens
+                            prompt_hit_tokens += usage.prompt_cache_hit_tokens
+                            prompt_miss_tokens += usage.prompt_cache_miss_tokens
                         }
                     }
-                    chunkMessage.reasoning_content?.let { reasoningContent ->
-                        if (reasoningContent.isNotEmpty()) {
-                            assistantMessage.reasoning_content += reasoningContent
-                        }
-                    }
-                    chunkMessage.tool_calls?.let { incomingToolCalls ->
+                    chunk.choices?.firstOrNull()?.delta?.let { chunkMessage ->
+                        ALog.i(TAG, "chatStream chunk: $chunk")
+                        chunkMessage.content
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.also {
+                                assistantMessage.apply {
+                                    content = (content ?: "") + it
+                                }
+                            }
+                        chunkMessage.reasoning_content
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.also {
+                                assistantMessage.apply {
+                                    reasoning_content = (reasoning_content ?: "") + it
+                                }
+                            }
+                        chunkMessage.tool_calls?.let { incomingToolCalls ->
 
-                        val pendingUpdateToolCalls = assistantMessage.tool_calls ?: run {
-                            val new = ArrayList<ToolCall>()
-                            assistantMessage.tool_calls = new
-                            new
-                        }
-
-                        incomingToolCalls.forEach { incomingToolCall ->
-                            ALog.i(TAG, "chatStream toolCalls: $incomingToolCall")
-                            // 通过index定位已有ToolCall
-                            val existingIndex = pendingUpdateToolCalls.indexOfFirst {
-                                it.index == incomingToolCall.index
+                            val pendingUpdateToolCalls = assistantMessage.tool_calls ?: run {
+                                val new = ArrayList<ToolCall>()
+                                assistantMessage.tool_calls = new
+                                new
                             }
 
-                            if (existingIndex != -1) {
-                                // 更新已有ToolCall
-                                val existing = pendingUpdateToolCalls[existingIndex]
-                                pendingUpdateToolCalls[existingIndex] = existing.copy(
-                                    id = incomingToolCall.id ?: existing.id,
-                                    type = incomingToolCall.type ?: existing.type,
-                                    function = mergeFunction(
-                                        existing.function,
-                                        incomingToolCall.function
-                                    )
-                                )
-                            } else {
-                                // 创建新ToolCall（首次出现该index）
-                                pendingUpdateToolCalls.add(
-                                    ToolCall(
-                                        index = incomingToolCall.index,
-                                        id = incomingToolCall.id,
-                                        type = incomingToolCall.type,
-                                        function = incomingToolCall.function?.copy(
-                                            arguments = incomingToolCall.function?.arguments ?: ""
+                            incomingToolCalls.forEach { incomingToolCall ->
+                                ALog.i(TAG, "chatStream toolCalls: $incomingToolCall")
+                                // 通过index定位已有ToolCall
+                                val existingIndex = pendingUpdateToolCalls.indexOfFirst {
+                                    it.index == incomingToolCall.index
+                                }
+
+                                if (existingIndex != -1) {
+                                    // 更新已有ToolCall
+                                    val existing = pendingUpdateToolCalls[existingIndex]
+                                    pendingUpdateToolCalls[existingIndex] = existing.copy(
+                                        id = incomingToolCall.id ?: existing.id,
+                                        type = incomingToolCall.type ?: existing.type,
+                                        function = mergeFunction(
+                                            existing.function,
+                                            incomingToolCall.function
                                         )
                                     )
-                                )
+                                } else {
+                                    // 创建新ToolCall（首次出现该index）
+                                    pendingUpdateToolCalls.add(
+                                        ToolCall(
+                                            index = incomingToolCall.index,
+                                            id = incomingToolCall.id,
+                                            type = incomingToolCall.type,
+                                            function = incomingToolCall.function?.copy(
+                                                arguments = incomingToolCall.function?.arguments
+                                                    ?: ""
+                                            )
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
+                    emit(chatEntity)
+                }
+            } catch (e: Exception) {
+                if (chatEntity.messages.lastOrNull()?.message == assistantMessage) {
+                    chatEntity.messages.removeLast()
+                }
+                chatEntity.messages.add(
+                    ChatUIMessage(
+                        message = AssistantMessage(
+                            content = e.message ?: "An error occurred"
+                        ),
+                        timestamp = System.currentTimeMillis(),
+                        isError = true
+                    )
+                )
                 emit(chatEntity)
             }
 
@@ -373,7 +394,7 @@ class ChatRepository {
     }
 
     private suspend fun callToolFunctions(
-        config: DeepSeekConfig,
+        config: ChatConfig,
         chatEntity: ChatEntity,
         toolCalls: List<ToolCall>
     ) {
@@ -402,7 +423,7 @@ class ChatRepository {
     }
 
     private suspend fun callToolFunctionsStream(
-        config: DeepSeekConfig,
+        config: ChatConfig,
         chatEntity: ChatEntity,
         toolCalls: List<ToolCall>
     ): Flow<ChatEntity> {

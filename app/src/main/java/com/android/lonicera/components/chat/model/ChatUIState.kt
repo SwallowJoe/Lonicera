@@ -2,22 +2,19 @@ package com.android.lonicera.components.chat.model
 
 import com.android.lonicera.base.State
 import com.android.lonicera.db.entity.ChatEntity
-import com.llmsdk.deepseek.DeepSeekConfig
-import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.base.ChatConfig
+import com.llmsdk.base.ChatModel
 
 data class ChatUIState(
+    var chatConfig: ChatConfig = ChatConfig(),
     val chatEntity: ChatEntity,
-
     /**
      * Chat histories
      * key: createdTimestamp
      * value: title
      */
     val chatHistories: Map<String /*createdTimestamp*/, String /*title*/> = HashMap(),
-    val model: ChatModel = ChatModel.DEEPSEEK_CHAT,
-    // var systemPrompt: String = "",
     val supportedModels: List<ChatModel> = emptyList(),
-    var config: DeepSeekConfig = DeepSeekConfig(),
 
     // State
     val error: String? = null,

@@ -1,5 +1,7 @@
 package com.llmsdk.deepseek.models
 
+import com.llmsdk.base.ChatModel
+
 fun chatCompletionParams(block: ChatCompletionParams.Builder.() -> Unit): ChatCompletionParams {
     return ChatCompletionParams.Builder().apply(block).build()
 }
@@ -118,8 +120,8 @@ class ChatCompletionParams internal constructor(
      */
     fun createRequest(messages: List<ChatMessage>): ChatCompletionRequest =
         ChatCompletionRequest(
-            messages = messages,
             model = model,
+            messages = messages,
             frequency_penalty = frequency_penalty,
             max_tokens = max_tokens,
             presence_penalty = presence_penalty,

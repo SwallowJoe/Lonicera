@@ -9,8 +9,18 @@ import com.llmsdk.deepseek.models.ChatCompletionResponse
 import com.llmsdk.deepseek.models.ChatCompletionResponseChunk
 import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.ChatMessageModule
-import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.base.ChatModel
+import com.llmsdk.base.isSupportFrequencyPenalty
+import com.llmsdk.base.isSupportFunctionCall
+import com.llmsdk.base.isSupportLogprobs
+import com.llmsdk.base.isSupportPresencePenalty
+import com.llmsdk.base.isSupportTemperature
+import com.llmsdk.base.isSupportTopLogprobs
+import com.llmsdk.base.isSupportTopP
+import com.llmsdk.deepseek.models.AssistantMessage
+import com.llmsdk.deepseek.models.ChatChoiceChunk
 import com.llmsdk.deepseek.models.DeepSeekParams
+import com.llmsdk.deepseek.models.FinishReason
 import com.llmsdk.deepseek.models.ModelListResponse
 import com.llmsdk.deepseek.models.UserMessage
 import com.llmsdk.errors.ResponseError
@@ -80,12 +90,48 @@ abstract class DeepSeekBaseClient(
         return this.config.isSameToken(token)
     }
 
+    /**
+     * 根据请求参数，生成一个经过验证的请求
+     * 根据DeepSeek官网要求：
+     * 1. DeepSeek R1 推理模型暂不支持Function Call:
+     *      https://api-docs.deepseek.com/zh-cn/guides/reasoning_model
+     * 2. 推理模型的reasoning_content
+     *     a. 不支持的功能：Function Call、Json Output、FIM 补全 (Beta)
+     *     b. 不支持的参数：temperature、top_p、presence_penalty、frequency_penalty、logprobs、top_logprobs。
+     *     请注意，为了兼容已有软件，设置 temperature、top_p、presence_penalty、frequency_penalty 参数不会报错，但也不会生效。
+     *     设置 logprobs、top_logprobs 会报错
+     * @return validated request
+     */
+    private fun ChatCompletionRequest.toValidatedRequest(): ChatCompletionRequest {
+        return copy(
+            messages = messages.map {
+                if (it is AssistantMessage) {
+                    // 注意对于 AssistantMessage，需要去除 reasoning_content
+                    // refer: https://api-docs.deepseek.com/zh-cn/guides/reasoning_model
+                    it.copy(
+                        reasoning_content = null,
+                        tool_calls = if (model.isSupportFunctionCall()) it.tool_calls else null
+                    )
+                } else it
+            },
+            temperature = if (model.isSupportTemperature()) temperature else null,
+            top_p = if (model.isSupportTopP()) top_p else null,
+            presence_penalty = if (model.isSupportPresencePenalty()) presence_penalty else null,
+            frequency_penalty = if (model.isSupportFrequencyPenalty()) frequency_penalty else null,
+            logprobs = if (model.isSupportLogprobs()) logprobs else null,
+            top_logprobs = if (model.isSupportTopLogprobs()) top_logprobs else null,
+            tools = if (model.isSupportFunctionCall()) tools else null,
+            tool_choice = if (model.isSupportFunctionCall()) tool_choice else null
+        )
+    }
+
     suspend fun chatCompletion(request: ChatCompletionRequest): ChatCompletionResponse {
-        ALog.i(TAG, "chatCompletion request: ${config.jsonConfig.encodeToString(request)}")
+        val validatedRequest = request.toValidatedRequest()
+        ALog.i(TAG, "chatCompletion request: ${config.jsonConfig.encodeToString(validatedRequest)}")
 
         val response = client.post(urlString = "https://api.deepseek.com/v1/chat/completions") {
             timeout { requestTimeoutMillis = config.chatCompletionTimeout }
-            setBody(request)
+            setBody(validatedRequest)
         }
         validateResponse(response)
         return response.body()
@@ -94,7 +140,13 @@ abstract class DeepSeekBaseClient(
     suspend fun chatCompletionStream(request: ChatCompletionRequest): Flow<ChatCompletionResponseChunk> {
         return flow {
             try {
-                ALog.i(TAG, "chatCompletionStream request: ${config.jsonConfig.encodeToString(request)}")
+                val validatedRequest = request.toValidatedRequest()
+                ALog.i(
+                    TAG,
+                    "chatCompletionStream request: ${
+                        config.jsonConfig.encodeToString(validatedRequest)
+                    }"
+                )
 
                 client.sse(
                     urlString = "https://api.deepseek.com/v1/chat/completions",
@@ -105,7 +157,7 @@ abstract class DeepSeekBaseClient(
                             append(HttpHeaders.CacheControl, "no-cache")
                             append(HttpHeaders.Connection, "keep-alive")
                         }
-                        setBody(request)
+                        setBody(validatedRequest)
                         timeout { requestTimeoutMillis = config.chatCompletionTimeout }
                     }
                 ) {
@@ -114,7 +166,10 @@ abstract class DeepSeekBaseClient(
                         incoming.collect { event ->
                             event.data?.trim()?.takeIf { it != "[DONE]" }?.let { data ->
                                 ALog.i(TAG, "chatCompletionStream collect: $data")
-                                val chatChunk = config.jsonConfig.decodeFromString<ChatCompletionResponseChunk>(data)
+                                val chatChunk =
+                                    config.jsonConfig.decodeFromString<ChatCompletionResponseChunk>(
+                                        data
+                                    )
                                 emit(chatChunk)
                             }
                         }
@@ -124,23 +179,40 @@ abstract class DeepSeekBaseClient(
                 }
             } catch (e: SSEClientException) {
                 ALog.e(TAG, "chatCompletionStream SSEClientException: ${e.message}")
-                e.response?.let { response ->
-                    throw DeepSeekException.from(response.status.value, response.headers,
-                        ResponseError(
-                            ResponseError.Error(
-                                message = e.message,
-                                type = "SSE error"
-                            )
-                    ))
-                }
+                // emit(exceptionChatCompletionResponseChunk(content = "${e.message}, ${e.response?.status}"))
             } catch (e: SerializationException) {
                 ALog.e(TAG, "chatCompletionStream SerializationException: ${e.message}")
-                throw e
+                // emit(exceptionChatCompletionResponseChunk(content = "${e.message}"))
             } catch (e: Exception) {
                 ALog.e(TAG, "chatCompletionStream error: ${e.message}")
-                throw e
+                // emit(exceptionChatCompletionResponseChunk(content = "${e.message}, stack: ${e.stackTrace.joinToString()}"))
             }
         }.flowOn(Dispatchers.IO)
+    }
+
+    private fun exceptionChatCompletionResponseChunk(content: String): ChatCompletionResponseChunk {
+        return ChatCompletionResponseChunk(
+            id = "",
+            `object` = "",
+            created = 0,
+            model = "",
+            system_fingerprint = "",
+            choices = listOf(
+                ChatChoiceChunk(
+                    index = 0,
+                    finish_reason = FinishReason.STOP,
+                    delta = AssistantMessage(
+                        content = content,
+                        name = null,
+                        prefix = null,
+                        reasoning_content = null,
+                        tool_calls = null
+                    ),
+                    logprobs = null
+                )
+            ),
+            usage = null
+        )
     }
 
     suspend fun getBalance(): BalanceResponse {
@@ -275,10 +347,11 @@ class DeepSeekClient internal constructor(
     }
 
     suspend fun chat(params: ChatCompletionParams, messages: List<ChatMessage>): ChatCompletionResponse {
-        val request =
-            (if (params.stream == true) params.copy(stream = false) else params).createRequest(
-                messages
-            )
+        val request = (if (params.stream == true)
+                           params.copy(stream = false)
+                       else
+                           params
+                      ).createRequest(messages)
         return chatCompletion(request)
     }
 
@@ -444,7 +517,7 @@ class DeepSeekClient(
 
     // 基础请求方法
     suspend fun chatCompletion(
-        config: DeepSeekConfig,
+        config: ChatConfig,
         messages: List<ChatMessage>,
     ): ChatCompletionResponse {
         return executeRequest {
@@ -476,7 +549,7 @@ class DeepSeekClient(
         }
     }
 
-    suspend fun getSupportedModels(config: DeepSeekConfig): ModelListResponse {
+    suspend fun getSupportedModels(config: ChatConfig): ModelListResponse {
         return executeRequest {
             url("$BASE_URL/models")
             header(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
@@ -485,7 +558,7 @@ class DeepSeekClient(
         }
     }
 
-    suspend fun getBalance(config: DeepSeekConfig): BalanceResponse {
+    suspend fun getBalance(config: ChatConfig): BalanceResponse {
         return executeRequest {
             url("$BASE_URL/user/balance")
             header(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
@@ -495,7 +568,7 @@ class DeepSeekClient(
     }
 
     suspend fun chatCompletionStream(
-        config: DeepSeekConfig,
+        config: ChatConfig,
         messages: List<ChatMessage>,
     ): Flow<ChatCompletionResponseChunk> = streamRequest(
         urlString = "$BASE_URL/chat/completions",

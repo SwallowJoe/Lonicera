@@ -1,7 +1,7 @@
 package com.android.lonicera.components.chat.model
 
 import com.android.lonicera.base.Action
-import com.llmsdk.deepseek.models.ChatModel
+import com.llmsdk.base.ChatModel
 
 sealed class ChatUIAction : Action {
     data object LoadChat : ChatUIAction()

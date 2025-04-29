@@ -48,6 +48,8 @@ import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
+import com.llmsdk.deepseek.models.AssistantMessage
+import com.llmsdk.deepseek.models.ChatMessage
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -140,8 +142,19 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                         )
                         .padding(12.dp)
                 ) {
+                    var content = ""
+                    if (message.message is AssistantMessage && message.message.reasoning_content?.isNotEmpty() == true) {
+                        content += "> "
+                        content += message.message.reasoning_content?.replace(Regex("\\R")) {
+                            "${it.value}> "
+                        }
+                        content += "\n\n"
+                    }
+                    if (message.message.content?.isNotEmpty() == true) {
+                        content += message.message.content
+                    }
                     MarkdownText(
-                        markdown = message.message.content ?: ""
+                        markdown = content
                     )
                 }
             }
