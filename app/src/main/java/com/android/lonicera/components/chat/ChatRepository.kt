@@ -1,7 +1,5 @@
 package com.android.lonicera.components.chat
 
-import android.util.Log
-import androidx.lifecycle.viewModelScope
 import com.android.lonicera.components.chat.model.ChatUIMessage
 import com.android.lonicera.db.DatabaseManager
 import com.android.lonicera.db.entity.ChatEntity
@@ -10,35 +8,24 @@ import com.llmsdk.deepseek.DeepSeekClientStream
 import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.BalanceResponse
-import com.llmsdk.deepseek.models.ChatCompletionResponse
-import com.llmsdk.deepseek.models.ChatCompletionResponseChunk
-import com.llmsdk.deepseek.models.ChatMessage
 import com.llmsdk.deepseek.models.ChatModel
 import com.llmsdk.deepseek.models.FunctionResponse
 import com.llmsdk.deepseek.models.ModelInfo
-import com.llmsdk.deepseek.models.ResponseFormat
-import com.llmsdk.deepseek.models.StopReason
-import com.llmsdk.deepseek.models.Tool
 import com.llmsdk.deepseek.models.ToolCall
-import com.llmsdk.deepseek.models.ToolChoice
 import com.llmsdk.deepseek.models.ToolMessage
+import com.llmsdk.log.ALog
 import com.llmsdk.tools.ToolManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.json.JSONObject
 
 class ChatRepository {
     companion object {
@@ -167,7 +154,7 @@ class ChatRepository {
     }
 
     suspend fun chat(config: DeepSeekConfig, chatEntity: ChatEntity) {
-        Log.i(TAG, "chat")
+        ALog.i(TAG, "chat")
         try {
             val client = getClient(config.apiKey)
             val response = client.chatCompletion {
@@ -187,7 +174,7 @@ class ChatRepository {
                 }
                 messages(list = chatEntity.chatMessages())
             }
-            Log.i(TAG, "chat response: ${response.choices.first()}")
+            ALog.i(TAG, "chat response: ${response.choices.first()}")
             if (response.choices.first().message.tool_calls?.isNotEmpty() == true) {
                 chatEntity.messages.add(
                     ChatUIMessage(
@@ -238,7 +225,7 @@ class ChatRepository {
         config: DeepSeekConfig,
         chatEntity: ChatEntity
     ): Flow<ChatEntity> {
-        Log.i(TAG, "chatStream $chatEntity")
+        ALog.i(TAG, "chatStream $chatEntity")
         val chatClient = getClientStream(config.apiKey)
         return flow {
             val assistantMessage = AssistantMessage(content = "")
@@ -281,7 +268,7 @@ class ChatRepository {
                     }
                 }
                 chunk.choices?.firstOrNull()?.delta?.let { chunkMessage ->
-                    Log.i(TAG, "chatStream chunk: $chunk")
+                    ALog.i(TAG, "chatStream chunk: $chunk")
                     chunkMessage.content?.let { content ->
                         if (content.isNotEmpty()) {
                             assistantMessage.content += content
@@ -301,7 +288,7 @@ class ChatRepository {
                         }
 
                         incomingToolCalls.forEach { incomingToolCall ->
-                            Log.i(TAG, "chatStream toolCalls: $incomingToolCall")
+                            ALog.i(TAG, "chatStream toolCalls: $incomingToolCall")
                             // 通过index定位已有ToolCall
                             val existingIndex = pendingUpdateToolCalls.indexOfFirst {
                                 it.index == incomingToolCall.index
@@ -339,7 +326,7 @@ class ChatRepository {
             }
 
             val pendingToolCalls = assistantMessage.tool_calls
-            Log.i(TAG, "chatStream pendingToolCalls: $pendingToolCalls")
+            ALog.i(TAG, "chatStream pendingToolCalls: $pendingToolCalls")
 
             if (pendingToolCalls?.isNotEmpty() == true) {
                 chatEntity.messages.lastOrNull()?.isToolCall = true
@@ -370,7 +357,7 @@ class ChatRepository {
 
     suspend fun functionCallTest(): AssistantMessage {
         val response = ToolManager.callTool("get_weather", emptyMap())
-        Log.i(TAG, "processFunctionCall response: $response")
+        ALog.i(TAG, "processFunctionCall response: $response")
         return AssistantMessage(
             content = response
         )
@@ -392,12 +379,12 @@ class ChatRepository {
     ) {
         toolCalls.forEach { toolCall ->
             val functionName = toolCall.function?.name ?: return@forEach
-            Log.i(TAG, "processFunctionCall: $toolCall")
+            ALog.i(TAG, "processFunctionCall: $toolCall")
             val response = ToolManager.callTool(
                 functionName,
                 parseArguments(toolCall.function?.arguments)
             )
-            Log.i(TAG, "processFunctionCall response: $response")
+            ALog.i(TAG, "processFunctionCall response: $response")
             chatEntity.messages.add(
                 ChatUIMessage(
                     timestamp = System.currentTimeMillis(),
@@ -422,12 +409,12 @@ class ChatRepository {
         if (toolCalls.isEmpty()) throw IllegalArgumentException("toolCalls is empty!")
         toolCalls.forEach { toolCall ->
             val functionName = toolCall.function?.name ?: return@forEach
-            Log.i(TAG, "processFunctionCall: $toolCall")
+            ALog.i(TAG, "processFunctionCall: $toolCall")
             val response = ToolManager.callTool(
                 functionName,
                 parseArguments(toolCall.function?.arguments)
             )
-            Log.i(TAG, "processFunctionCall response: $response")
+            ALog.i(TAG, "processFunctionCall response: $response")
             chatEntity.messages.add(
                 ChatUIMessage(
                     timestamp = System.currentTimeMillis(),

@@ -1,6 +1,5 @@
 package com.llmsdk.deepseek
 
-import android.util.Log
 import com.llmsdk.deepseek.errors.DeepSeekException
 import com.llmsdk.deepseek.errors.validateResponse
 import com.llmsdk.deepseek.models.BalanceResponse
@@ -15,6 +14,7 @@ import com.llmsdk.deepseek.models.DeepSeekParams
 import com.llmsdk.deepseek.models.ModelListResponse
 import com.llmsdk.deepseek.models.UserMessage
 import com.llmsdk.errors.ResponseError
+import com.llmsdk.log.ALog
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
@@ -33,14 +33,11 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.sse.SSE
 import io.ktor.client.plugins.sse.SSEClientException
 import io.ktor.client.plugins.sse.sse
-import io.ktor.client.plugins.sse.sseSession
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -84,7 +81,7 @@ abstract class DeepSeekBaseClient(
     }
 
     suspend fun chatCompletion(request: ChatCompletionRequest): ChatCompletionResponse {
-        Log.i(TAG, "chatCompletion request: ${config.jsonConfig.encodeToString(request)}")
+        ALog.i(TAG, "chatCompletion request: ${config.jsonConfig.encodeToString(request)}")
 
         val response = client.post(urlString = "https://api.deepseek.com/v1/chat/completions") {
             timeout { requestTimeoutMillis = config.chatCompletionTimeout }
@@ -97,7 +94,7 @@ abstract class DeepSeekBaseClient(
     suspend fun chatCompletionStream(request: ChatCompletionRequest): Flow<ChatCompletionResponseChunk> {
         return flow {
             try {
-                Log.i(TAG, "chatCompletionStream request: ${config.jsonConfig.encodeToString(request)}")
+                ALog.i(TAG, "chatCompletionStream request: ${config.jsonConfig.encodeToString(request)}")
 
                 client.sse(
                     urlString = "https://api.deepseek.com/v1/chat/completions",
@@ -113,20 +110,20 @@ abstract class DeepSeekBaseClient(
                     }
                 ) {
                     try {
-                        // Log.i(TAG, "chatCompletionStream started ${config.hashCode()}")
+                        // ALog.i(TAG, "chatCompletionStream started ${config.hashCode()}")
                         incoming.collect { event ->
                             event.data?.trim()?.takeIf { it != "[DONE]" }?.let { data ->
-                                Log.i(TAG, "chatCompletionStream collect: $data")
+                                ALog.i(TAG, "chatCompletionStream collect: $data")
                                 val chatChunk = config.jsonConfig.decodeFromString<ChatCompletionResponseChunk>(data)
                                 emit(chatChunk)
                             }
                         }
                     } finally {
-                        Log.i(TAG, "chatCompletionStream completed")
+                        ALog.i(TAG, "chatCompletionStream completed")
                     }
                 }
             } catch (e: SSEClientException) {
-                Log.e(TAG, "chatCompletionStream SSEClientException: ${e.message}")
+                ALog.e(TAG, "chatCompletionStream SSEClientException: ${e.message}")
                 e.response?.let { response ->
                     throw DeepSeekException.from(response.status.value, response.headers,
                         ResponseError(
@@ -137,10 +134,10 @@ abstract class DeepSeekBaseClient(
                     ))
                 }
             } catch (e: SerializationException) {
-                Log.e(TAG, "chatCompletionStream SerializationException: ${e.message}")
+                ALog.e(TAG, "chatCompletionStream SerializationException: ${e.message}")
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "chatCompletionStream error: ${e.message}")
+                ALog.e(TAG, "chatCompletionStream error: ${e.message}")
                 throw e
             }
         }.flowOn(Dispatchers.IO)
@@ -548,17 +545,17 @@ class DeepSeekClient(
         noinline block: HttpRequestBuilder.() -> Unit
     ): Flow<T> = flow {
         try {
-            Log.i(TAG, "streamRequest sse $urlString")
+            ALog.i(TAG, "streamRequest sse $urlString")
             client.sse(
                 urlString = urlString,
                 request = {
                     block()
                 }
             ) {
-                Log.i(TAG, "streamRequest incoming collect event")
+                ALog.i(TAG, "streamRequest incoming collect event")
                 incoming.collect { event ->
                     // event.data 可能为 null，或者是终止标志 "[DONE]"
-                    Log.i(TAG, "streamRequest event: $event")
+                    ALog.i(TAG, "streamRequest event: $event")
                     event.data
                         ?.trim()
                         ?.takeIf { it.isNotEmpty() && it != "[DONE]" }
@@ -582,15 +579,15 @@ class DeepSeekClient(
                                 )
                             }
 
-                            Log.i(TAG, "streamRequest emit: $chatChunk")
+                            ALog.i(TAG, "streamRequest emit: $chatChunk")
                             emit(chatChunk)
                         }
                 }
             }
         } catch (e: SSEClientException) {
-            Log.e(TAG, "streamRequest sse $urlString error: $e")
+            ALog.e(TAG, "streamRequest sse $urlString error: $e")
             throw e
         }
-        Log.i(TAG, "streamRequest sse $urlString end")
+        ALog.i(TAG, "streamRequest sse $urlString end")
     }.flowOn(Dispatchers.IO)
 }*/

@@ -1,12 +1,12 @@
 package com.llmsdk.tools
 
 import android.content.Context
-import android.util.Log
 import com.android.mcpsdk.base.McpConnection
 import com.android.mcpsdk.client.BinderMcpClient
 import com.llmsdk.deepseek.models.FunctionRequest
 import com.llmsdk.deepseek.models.Tool
 import com.llmsdk.deepseek.models.ToolCallType
+import com.llmsdk.log.ALog
 import com.llmsdk.tools.functions.getWeatherFunctionRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +56,7 @@ object ToolManager {
     fun registerFunction(function: FunctionRequest) {
         if (function.name.isNullOrBlank()) return
         if (mTools.containsKey(function.name)) {
-            Log.w(TAG, "replace function ${function.name}!")
+            ALog.w(TAG, "replace function ${function.name}!")
         }
         mTools[function.name] = ToolRecord(Tool(ToolCallType.FUNCTION, function), null)
     }
@@ -64,9 +64,9 @@ object ToolManager {
     private fun registerFunction(tool: Tool, connection: McpConnection) {
         if (tool.function.name.isNullOrBlank()) return
         if (mTools.containsKey(tool.function.name)) {
-            Log.w(TAG, "replace function ${tool.function.name}!")
+            ALog.w(TAG, "replace function ${tool.function.name}!")
         }
-        Log.i(TAG, "registerFunction $tool")
+        ALog.i(TAG, "registerFunction $tool")
         mTools[tool.function.name] = ToolRecord(tool, connection)
     }
 

@@ -1,12 +1,12 @@
 package com.android.lonicera.db
 
 import android.content.Context
-import android.util.Log
 import androidx.room.Room
 import com.android.lonicera.db.database.ChatDatabase
 import com.android.lonicera.db.entity.ApiKeyEntity
 import com.android.lonicera.db.entity.ChatEntity
 import com.android.lonicera.db.entity.SettingsEntity
+import com.llmsdk.log.ALog
 
 object DatabaseManager {
     private const val TAG = "DatabaseManager"
@@ -23,7 +23,7 @@ object DatabaseManager {
 
     suspend fun insertChatEntity(entity: ChatEntity): Boolean {
         chatDatabase?.chatDao()?.insert(entity) ?: run {
-            Log.i(TAG, "insert failed of $entity")
+            ALog.i(TAG, "insert failed of $entity")
             return false
         }
         return true

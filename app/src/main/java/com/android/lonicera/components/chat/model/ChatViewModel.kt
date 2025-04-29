@@ -7,17 +7,13 @@ import com.android.lonicera.R
 import com.android.lonicera.base.BaseViewModel
 import com.android.lonicera.base.CoroutineDispatcherProvider
 import com.android.lonicera.components.chat.ChatRepository
-import com.llmsdk.deepseek.DeepSeekConfig
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.ChatModel
-import com.llmsdk.deepseek.models.ToolMessage
 import com.llmsdk.deepseek.models.UserMessage
-import com.llmsdk.tools.ToolManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
