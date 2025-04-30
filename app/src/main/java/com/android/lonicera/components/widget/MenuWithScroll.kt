@@ -18,6 +18,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,11 +62,13 @@ fun MenuWithScroll(
                 style = MaterialTheme.typography.bodySmall,
                 color = if (!expanded) MaterialTheme.colorScheme.onSecondaryContainer
                 else MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.align(alignment = Alignment.CenterVertically).padding(start = 4.dp),
+                modifier = Modifier.align(alignment = Alignment.CenterVertically)
+                    .padding(start = 4.dp),
             )
             Icon(
                 painter = painterResource(R.drawable.unfold_more_48px),
                 contentDescription = stringResource(R.string.more),
+                tint = LocalContentColor.current,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -103,7 +106,13 @@ fun MenuWithScroll(
                         expanded = false
                         onOptionSelected(option)
                     },
-                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) }
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            tint = LocalContentColor.current,
+                            contentDescription = null
+                        )
+                    }
                 )
 
                 HorizontalDivider(thickness = 1.dp)

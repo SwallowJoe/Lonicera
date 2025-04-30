@@ -2,6 +2,7 @@ package com.android.lonicera.components.chat.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -94,6 +96,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                 Icon(
                     imageVector = if (!expanded) Icons.Default.Add else Icons.Default.Close,
                     contentDescription = stringResource(R.string.more),
+                    tint = LocalContentColor.current,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -112,6 +115,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                 Icon(
                     painter = painterResource(id = R.drawable.psychology_48px),
                     contentDescription = stringResource(R.string.more),
+                    tint = LocalContentColor.current,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -130,8 +134,9 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                 )
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.captive_portal_48px),
+                    painter = painterResource(id = R.drawable.network_48dp),
                     contentDescription = stringResource(R.string.more),
+                    tint = LocalContentColor.current,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -226,7 +231,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                             disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f))
                         )
                     ) {
-                        Icon(
+                        Image(
                             painter = painterResource(R.drawable.photo_camera_48px),
                             contentDescription = "拍照识别文字",
                             modifier = Modifier.size(24.dp)
@@ -261,7 +266,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                             disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f))
                         )
                     ) {
-                        Icon(
+                        Image(
                             painter = painterResource(R.drawable.imagesmode_48px),
                             contentDescription = "图片识别文字",
                             modifier = Modifier.size(24.dp)
@@ -296,7 +301,7 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                             disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f))
                         )
                     ) {
-                        Icon(
+                        Image(
                             painter = painterResource(R.drawable.upload_file_48px),
                             contentDescription = "上传文件",
                             modifier = Modifier.size(24.dp)

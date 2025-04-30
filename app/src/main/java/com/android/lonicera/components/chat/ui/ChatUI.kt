@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -98,8 +99,9 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                                 drawerState.value = true
                             }) {
                                 Icon(
-                                    painter = painterResource(R.drawable.sort_48px),
+                                    painter = painterResource(R.drawable.menu_48dp),
                                     contentDescription = stringResource(R.string.chat_history),
+                                    tint =  MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -113,15 +115,16 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                                 Icon(
                                     painter = painterResource(R.drawable.settings_48px),
                                     contentDescription = stringResource(R.string.settings),
+                                    tint =  MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            titleContentColor = Color.Black,
-                            navigationIconContentColor = Color.Black,
-                            actionIconContentColor = Color.Black
+                            titleContentColor = MaterialTheme.colorScheme.onSurface,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                            actionIconContentColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 },

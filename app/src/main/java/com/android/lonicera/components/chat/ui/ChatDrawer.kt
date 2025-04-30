@@ -42,6 +42,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -153,7 +154,8 @@ fun ChatDrawerContent(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = stringResource(R.string.chat_history),
-                        modifier = Modifier.size(24.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
@@ -178,7 +180,7 @@ fun ChatDrawerContent(
                     },
                     modifier = Modifier.padding(end = 16.dp)
                 ) {
-                    Icon(
+                    Image(
                         painter = painterResource(R.drawable.delete_forever_48px),
                         contentDescription = stringResource(R.string.chat_history),
                         modifier = Modifier.size(16.dp)

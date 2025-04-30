@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -300,6 +301,7 @@ private fun DeepSeekSettings(state: ChatUIState,
                             else R.drawable.visibility_off_48px
                         ),
                         contentDescription = "Toggle password visibility",
+                        tint = LocalContentColor.current,
                         modifier = Modifier.size(20.dp)
                     )
                 }

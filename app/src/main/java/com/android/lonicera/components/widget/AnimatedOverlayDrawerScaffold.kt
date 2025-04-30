@@ -5,11 +5,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -180,11 +182,12 @@ fun AnimatedOverlayDrawerScaffold(
             content()
 
             if (offsetX != 0.dp || offsetY != 0.dp) {
+                val finalAlpha = if (isSystemInDarkTheme()) 0.8f else 0.3f
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .zIndex(1f)
-                        .background(Color.Black.copy(alpha = 0.3f * progress))
+                        .background(Color.Black.copy(alpha = finalAlpha * progress))
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
