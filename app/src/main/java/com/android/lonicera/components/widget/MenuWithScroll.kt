@@ -31,7 +31,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.lonicera.R
 
 @Composable
@@ -49,8 +48,8 @@ fun MenuWithScroll(
                 expanded = !expanded
             }
         }.background(
-            color = if (!expanded) MaterialTheme.colorScheme.surfaceContainerLow
-            else MaterialTheme.colorScheme.surfaceContainerHigh
+            color = if (!expanded) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.primaryContainer
         ).fillMaxSize()
     ) {
         Row(
@@ -59,8 +58,10 @@ fun MenuWithScroll(
         ) {
             Text(
                 text = selectedOption,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (!expanded) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.align(alignment = Alignment.CenterVertically).padding(start = 4.dp),
-                fontSize = 12.sp,
             )
             Icon(
                 painter = painterResource(R.drawable.unfold_more_48px),
@@ -94,7 +95,8 @@ fun MenuWithScroll(
                     text = {
                         Text(
                             text = option,
-                            fontSize = 12.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     },
                     onClick = {

@@ -118,7 +118,7 @@ fun ChatDrawerContent(
                     if (useDevelopApi >= 5) {
                         Toast.makeText(
                             context,
-                            "使用开发者API Key",
+                            "已使用开发者API Key",
                             Toast.LENGTH_SHORT
                         ).show()
                         useDevelopApi = 0
@@ -135,24 +135,15 @@ fun ChatDrawerContent(
                                     useDevelopApi++
                                     if (useDevelopApi >= 5) {
                                         viewModel.sendAction(ChatUIAction.UseDevelopApiKey)
-                                        useDevelopApi = 0
                                     }
                                 }
                             )
                         }
                 )
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.typography.titleMedium.color,
-                                fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                                fontWeight = MaterialTheme.typography.titleMedium.fontWeight
-                            )
-                        ) {
-                            append(stringResource(R.string.app_name))
-                        }
-                    },
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 10.dp)
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -175,15 +166,9 @@ fun ChatDrawerContent(
                     // .background(MaterialTheme.colorScheme.surface)
             ) {
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surface)
-                            )
-                        ) {
-                            append(stringResource(R.string.chat_history))
-                        }
-                    },
+                    text = stringResource(R.string.chat_history),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 16.dp)
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -262,7 +247,7 @@ fun ChatDrawerContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp),
-                            fontSize = 16.sp,
+                            fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                             color = if (isSelected) {
                                 MaterialTheme.colorScheme.primary
                             } else {
@@ -339,7 +324,7 @@ fun ChatDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 40.dp)
                     .clickable(
                         onClick = {
                             viewModel.sendAction(ChatUIAction.NewChat)
@@ -358,15 +343,9 @@ fun ChatDrawerContent(
                 )
 
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surface)
-                            )
-                        ) {
-                            append(stringResource(R.string.new_chat))
-                        }
-                    },
+                    text = stringResource(R.string.new_chat),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 16.dp)
                 )
             }
@@ -377,7 +356,7 @@ fun ChatDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 40.dp)
                     .clickable(
                         onClick = {
                             navHostController.navigate(Destination.Tool.route)
@@ -395,15 +374,9 @@ fun ChatDrawerContent(
                 )
 
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surface)
-                            )
-                        ) {
-                            append(stringResource(R.string.tool_settings))
-                        }
-                    },
+                    text = stringResource(R.string.tool_settings),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 16.dp)
                 )
             }
@@ -414,7 +387,7 @@ fun ChatDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 40.dp)
                     .clickable(
                         onClick = {
                             navHostController.navigate(Destination.ModelProvider.route)
@@ -432,15 +405,9 @@ fun ChatDrawerContent(
                 )
 
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surface)
-                            )
-                        ) {
-                            append(stringResource(R.string.model_provider_info))
-                        }
-                    },
+                    text = stringResource(R.string.model_provider_info),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 16.dp)
                 )
             }
@@ -451,7 +418,7 @@ fun ChatDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 40.dp)
                     .clickable(
                         onClick = {
                             navHostController.navigate(Destination.Settings.route)
@@ -469,15 +436,9 @@ fun ChatDrawerContent(
                 )
 
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surface)
-                            )
-                        ) {
-                            append(stringResource(R.string.settings))
-                        }
-                    },
+                    text = stringResource(R.string.settings),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 16.dp)
                 )
             }
@@ -488,7 +449,7 @@ fun ChatDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 40.dp)
                     .clickable(
                         onClick = {
                             navHostController.navigate(Destination.About.route)
@@ -506,15 +467,9 @@ fun ChatDrawerContent(
                 )
 
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surface)
-                            )
-                        ) {
-                            append(stringResource(R.string.about))
-                        }
-                    },
+                    text = stringResource(R.string.about),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 16.dp)
                 )
             }

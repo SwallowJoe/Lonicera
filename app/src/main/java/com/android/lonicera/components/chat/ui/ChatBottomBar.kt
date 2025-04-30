@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,8 +69,15 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                 .fillMaxWidth()
                 .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                 .clip(RoundedCornerShape(8.dp)),
-            placeholder = { Text(stringResource(R.string.input_message)) },
+            placeholder = {
+                Text(
+                    text = stringResource(R.string.input_message),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
             singleLine = false,
+            textStyle = MaterialTheme.typography.bodyMedium,
             maxLines = 10 // 最大行数
         )
 
@@ -212,10 +220,10 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f),
-                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f))
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer),
+                            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f),
+                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f))
                         )
                     ) {
                         Icon(
@@ -229,8 +237,8 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                             .align(Alignment.CenterHorizontally)
                             .padding(top = 4.dp),
                         text = "拍照识别文字",
-                        fontSize = 10.sp,
-                        color = Color.Gray,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Column(
@@ -247,10 +255,10 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f),
-                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f))
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer),
+                            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f),
+                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f))
                         )
                     ) {
                         Icon(
@@ -264,8 +272,8 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                             .align(Alignment.CenterHorizontally)
                             .padding(top = 4.dp),
                         text = "图片识别文字",
-                        fontSize = 10.sp,
-                        color = Color.Gray,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Column(
@@ -282,10 +290,10 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                         },
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f),
-                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.38f))
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer),
+                            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f),
+                            disabledContentColor = MaterialTheme.colorScheme.contentColorFor(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f))
                         )
                     ) {
                         Icon(
@@ -299,8 +307,8 @@ fun ChatBottomBar(state: ChatUIState, viewModel: ChatViewModel) {
                             .align(Alignment.CenterHorizontally)
                             .padding(top = 4.dp),
                         text = "文件",
-                        fontSize = 10.sp,
-                        color = Color.Gray,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

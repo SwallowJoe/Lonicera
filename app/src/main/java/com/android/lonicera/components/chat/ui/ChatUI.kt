@@ -19,14 +19,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +56,7 @@ import com.android.lonicera.components.chat.ChatRepository
 import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatViewModel
 import com.android.lonicera.components.widget.AnimatedOverlayDrawerScaffold
+import com.llmsdk.base.ChatModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,7 +87,11 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                 topBar = {
                     CenterAlignedTopAppBar(
                         title = {
-                            Text(text = state.chatEntity.title, fontSize = 16.sp)
+                            Text(
+                                text = state.chatEntity.title,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         },
                         navigationIcon = {
                             IconButton(onClick = {
@@ -223,7 +231,58 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                         ChatBottomBar(state, viewModel)
                     }
                 }
+
+                if (state.chatConfig.apiKey.isEmpty()) {
+                    ApiKeyDialog(
+                        model = state.chatConfig.model,
+                        initialApiKey = state.chatConfig.apiKey,
+                        onConfirm = { apiKey ->
+                            viewModel.sendAction(ChatUIAction.SetApiKey(state.chatConfig.model, apiKey))
+                        },
+                        onCancel = {
+                            // 设置空字符串，表示用户取消输入
+                            viewModel.sendAction(ChatUIAction.SetApiKey(state.chatConfig.model, " "))
+                        }
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ApiKeyDialog(
+    model: ChatModel,
+    initialApiKey: String = "",
+    onConfirm: (String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var apiKey by remember { mutableStateOf(initialApiKey) }
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = "当前大模型(${model.nickName})需要设置ApiKey:")
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    placeholder = { Text("请输入ApiKey") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(apiKey) }) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }

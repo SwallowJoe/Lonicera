@@ -55,6 +55,7 @@ import com.android.lonicera.components.chat.model.ChatUIState
 import com.android.lonicera.components.chat.model.ChatViewModel
 import com.llmsdk.deepseek.models.AssistantMessage
 import com.llmsdk.deepseek.models.ChatMessage
+import dev.jeziellago.compose.markdowntext.AutoSizeConfig
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -165,7 +166,13 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                         content += message.message.content
                     }
                     MarkdownText(
-                        markdown = content
+                        markdown = content,
+                        isTextSelectable = true,
+                        autoSizeConfig = AutoSizeConfig(
+                            autoSizeMinTextSize = MaterialTheme.typography.bodySmall.fontSize.value.toInt(),
+                            autoSizeMaxTextSize = MaterialTheme.typography.bodyMedium.fontSize.value.toInt(),
+                            autoSizeStepGranularity = 1
+                        ),
                     )
                     if (showMenu) {
                         val density = LocalDensity.current
@@ -186,14 +193,28 @@ fun ChatBubble(state: ChatUIState, viewModel: ChatViewModel, message: ChatUIMess
                             modifier = Modifier.animateContentSize()
                         ) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.copy)) },
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.copy),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                },
                                 onClick = {
-                                    clipboardManager.setText(AnnotatedString(message.message.content?:""))
+                                    clipboardManager.setText(
+                                        AnnotatedString(
+                                            message.message.content ?: ""
+                                        )
+                                    )
                                     showMenu = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.delete)) },
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.delete),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
                                 onClick = {
                                     viewModel.sendAction(ChatUIAction.DeleteChat(message))
                                     showMenu = false
