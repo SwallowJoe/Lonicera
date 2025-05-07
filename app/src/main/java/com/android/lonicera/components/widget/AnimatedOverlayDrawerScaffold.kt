@@ -30,12 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlin.math.absoluteValue
 
-enum class Direction {
-    LEFT,
-    RIGHT,
-    TOP,
-    BOTTOM,
-}
 
 @Composable
 fun AnimatedOverlayDrawerScaffold(
