@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.llmsdk.log.ALog
 import kotlin.math.roundToInt
 
 @Composable
@@ -113,14 +112,14 @@ fun AnchoredPopup(
                 spacing = spacingPx
             )
         }
-        ALog.d(
+/*        ALog.d(
             "AnchoredPopup", "adjustedPopupPosition: $adjustedPopupPosition, "
                     + "anchorPosition: $anchorPosition, "
                     + "anchorSize: $anchorSize, "
                     + "popupSize: $popupSize, "
                     + "screenWidthPx: $screenWidthPx, "
                     + "screenHeightPx: $screenHeightPx"
-        )
+        )*/
         Popup(
             onDismissRequest = onPopupDismissRequested,
             // alignment = Alignment.TopStart,
@@ -229,7 +228,7 @@ private fun processPosition(
             }
         }
     }
-    ALog.d("AnchoredPopup", "processPosition: "
+/*    ALog.d("AnchoredPopup", "processPosition: "
         + "position: $position, "
         + "baseX: $baseX, "
         + "baseY: $baseY, "
@@ -239,7 +238,7 @@ private fun processPosition(
         + "popupSize: $popupSize, "
         + "screenWidth: $screenWidth, "
         + "screenHeight: $screenHeight"
-    )
+    )*/
     return position
 }
 

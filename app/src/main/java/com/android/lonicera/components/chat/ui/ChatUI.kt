@@ -1,6 +1,7 @@
 package com.android.lonicera.components.chat.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
 import androidx.navigation.NavHostController
 import com.android.lonicera.R
 import com.android.lonicera.base.DefaultCoroutineDispatcherProvider
@@ -64,6 +66,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
     var showChatSettings by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+
     StateEffectScaffold(
         viewModel = chatViewModel,
         initialState = chatViewModel.getInitChatUIState(),
@@ -90,7 +94,7 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                         title = {
                             Text(
                                 text = state.chatEntity.title,
-                                fontSize = 16.sp,
+                                fontSize = MaterialTheme.typography.titleMedium.fontSize,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
@@ -136,6 +140,13 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                     }
                 }
 
+                LaunchedEffect(state.chatConfig.apiKey) {
+                    if (state.chatConfig.apiKey.isEmpty()) {
+                        delay(1000)
+                        showApiKeyDialog = true
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -170,35 +181,34 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                         }
                     }
 
-                    if (state.isLoading) {
-                        Dialog(
-                            onDismissRequest = {},
-                            properties = DialogProperties(
-                                dismissOnBackPress = false,
-                                dismissOnClickOutside = false
-                            )
+                    Popup {
+                        AnimatedVisibility(
+                            visible = state.isLoading,
+                            enter = fadeIn(animationSpec = tween(durationMillis = 100)),
+                            exit = fadeOut(animationSpec = tween(durationMillis = 350))
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .fillMaxSize(),
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.45f))
+                                    .padding(16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                AnimatedVisibility(
-                                    visible = state.isLoading,
-                                    enter = fadeIn(),
-                                    exit = fadeOut()
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                    )
-                                }
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .size(48.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    strokeWidth = 2.dp,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                )
                                 Text(
                                     text = stringResource(R.string.loading),
-                                    fontSize = 18.sp,
-                                    modifier = Modifier
-                                        .padding(top = 12.dp)
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                                    fontWeight = MaterialTheme.typography.bodyMedium.fontWeight,
+                                    fontStyle = MaterialTheme.typography.bodyMedium.fontStyle,
+                                    modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
                         }
@@ -235,7 +245,7 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                     }
                 }
 
-                if (state.chatConfig.apiKey.isEmpty()) {
+                if (showApiKeyDialog) {
                     ApiKeyDialog(
                         model = state.chatConfig.model,
                         initialApiKey = state.chatConfig.apiKey,
@@ -265,7 +275,11 @@ private fun ApiKeyDialog(
     AlertDialog(
         onDismissRequest = onCancel,
         title = {
-            Text(text = "当前大模型(${model.nickName})需要设置ApiKey:")
+            Text(
+                text = "当前大模型(${model.nickName})需要设置ApiKey:",
+                fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                fontStyle = MaterialTheme.typography.titleMedium.fontStyle,
+            )
         },
         text = {
             Column {
@@ -279,12 +293,22 @@ private fun ApiKeyDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(apiKey) }) {
-                Text(stringResource(R.string.confirm))
+                Text(
+                    text = stringResource(R.string.confirm),
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    fontStyle = MaterialTheme.typography.bodyMedium.fontStyle,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onCancel) {
-                Text(stringResource(R.string.cancel))
+                Text(
+                    text = stringResource(R.string.cancel),
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    fontStyle = MaterialTheme.typography.bodyMedium.fontStyle,
+                    color = MaterialTheme.colorScheme.secondary
+                )
             }
         }
     )
