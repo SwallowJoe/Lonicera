@@ -58,6 +58,7 @@ import com.android.lonicera.base.StateEffectScaffold
 import com.android.lonicera.components.chat.ChatRepository
 import com.android.lonicera.components.chat.model.ChatUIAction
 import com.android.lonicera.components.chat.model.ChatViewModel
+import com.android.lonicera.components.tool.autoDismissKeyboard
 import com.android.lonicera.components.widget.AnimatedOverlayDrawerScaffold
 import com.llmsdk.base.ChatModel
 import kotlinx.coroutines.delay
@@ -75,7 +76,7 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
     ) { viewModel, state ->
         val drawerState = remember { mutableStateOf(false) }
         AnimatedOverlayDrawerScaffold(
-            modifier = Modifier,
+            modifier = Modifier.autoDismissKeyboard(),
             showDrawer = drawerState,
             drawerContent = {
                 ChatDrawerContent(
@@ -250,9 +251,11 @@ fun ChatUI(navHostController: NavHostController, chatViewModel: ChatViewModel) {
                         model = state.chatConfig.model,
                         initialApiKey = state.chatConfig.apiKey,
                         onConfirm = { apiKey ->
+                            showApiKeyDialog = false
                             viewModel.sendAction(ChatUIAction.SetApiKey(state.chatConfig.model, apiKey))
                         },
                         onCancel = {
+                            showApiKeyDialog = false
                             // 设置空字符串，表示用户取消输入
                             viewModel.sendAction(ChatUIAction.SetApiKey(state.chatConfig.model, " "))
                         }

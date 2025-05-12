@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @Composable
@@ -70,6 +72,15 @@ fun AnchoredPopup(
         animationSpec = tween(durationMillis = 250),
         label = "popupScale"
     )
+
+    val popupVisible by produceState(initialValue = false, showPopup) {
+        if (showPopup) {
+            value = true
+        } else {
+            delay(250)
+            value = false
+        }
+    }
 
     Box(modifier = modifier) {
         // 获取动态更新的窗口嵌入区域
@@ -120,21 +131,24 @@ fun AnchoredPopup(
                     + "screenWidthPx: $screenWidthPx, "
                     + "screenHeightPx: $screenHeightPx"
         )*/
-        Popup(
-            onDismissRequest = onPopupDismissRequested,
-            // alignment = Alignment.TopStart,
-            properties = popupProperties,
-            offset = IntOffset(
-                adjustedPopupPosition.x - anchorPosition.x,
-                adjustedPopupPosition.y - anchorPosition.y
-            )
-        ) {
-            Box(
-                Modifier.onSizeChanged { size ->
-                    popupSize = size
-                }.alpha(alpha = popupAlpha).graphicsLayer(scaleX = popupScale, scaleY = popupScale)
+        if (popupVisible) {
+            Popup(
+                onDismissRequest = onPopupDismissRequested,
+                // alignment = Alignment.TopStart,
+                properties = popupProperties,
+                offset = IntOffset(
+                    adjustedPopupPosition.x - anchorPosition.x,
+                    adjustedPopupPosition.y - anchorPosition.y
+                )
             ) {
-                popupContent(Modifier)
+                Box(
+                    Modifier.onSizeChanged { size ->
+                        popupSize = size
+                    }.alpha(alpha = popupAlpha)
+                        .graphicsLayer(scaleX = popupScale, scaleY = popupScale)
+                ) {
+                    popupContent(Modifier)
+                }
             }
         }
     }
